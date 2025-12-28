@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!DOCTYPE html>                    
+  
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -183,6 +184,7 @@
 
     <div id="app" class="relative z-10 w-full max-w-4xl mx-auto min-h-screen md:my-10 md:rounded-[3rem] overflow-hidden flex flex-col glass-panel shadow-2xl">
           
+        <!-- Loading State -->
         <div id="loading" class="absolute inset-0 z-[9999] bg-slate-50 flex flex-col justify-center items-center px-6 text-center">
             <img src="logo tugu manihuruk.png" alt="Logo" class="w-32 h-32 animate-bounce mb-8">
             <h2 class="text-3xl font-black text-emerald-900 mb-2 royal-font uppercase">BONATAON 2026</h2>
@@ -259,28 +261,25 @@
         </footer>
     </div>
 
+    <!-- Modals Container -->
     <div id="modal-container"></div>
 
+    <!-- LOGIKA APLIKASI (MODULE SCRIPT) -->
     <script type="module">
-        // --- FIREBASE IMPORTS (MENGGUNAKAN CDN AGAR TETAP JALAN TANPA BUILD TOOL) ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
         import { getDatabase, ref, push, onValue, set, update, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // --- KONFIGURASI FIREBASE BARU (SESUAI PERMINTAAN) ---
+        // --- FIREBASE INITIALIZATION ---
         const firebaseConfig = {
-            apiKey: "AIzaSyA5XFf_99EsYUVRyV0GnGSm1QzSm0rVWhk",
-            authDomain: "dologmasagaltangerang.firebaseapp.com",
-            projectId: "dologmasagaltangerang",
-            storageBucket: "dologmasagaltangerang.firebasestorage.app",
-            messagingSenderId: "800663657726",
-            appId: "1:800663657726:web:041ff53a2d11614d7359af",
-            measurementId: "G-BLE1W54C50"
+            apiKey: "AIzaSyD1jqsGb3gIGEhg8qo37oMAANNcKDdDuFU",
+            authDomain: "bonataon-2026.firebaseapp.com",
+            databaseURL: "https://bonataon-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bonataon-2026",
+            storageBucket: "bonataon-2026.firebasestorage.app",
+            messagingSenderId: "392578784070",
+            appId: "1:392578784070:web:f85870afad7f202a592347"
         };
-
-        // --- INISIALISASI FIREBASE ---
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app); // Menambahkan Analytics
         const db = getDatabase(app);
 
         // --- GLOBAL STATE ---
@@ -1001,3 +1000,4 @@
     </script>
 </body>
 </html>
+
