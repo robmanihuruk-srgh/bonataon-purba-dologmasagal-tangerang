@@ -1,0 +1,1003 @@
+<!DOCTYPE html>                    
+  
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bonataon Marga Manihuruk Boru Bere / Panagolan 2026</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:wght@700;800;900&family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+      
+    <style>
+        :root {
+            --emerald-900: #064e3b;
+            --emerald-600: #10b981;
+            --emerald-50: #ecfdf5;
+            --emerald-500: #34d399;
+            --amber-500: #f59e0b;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --gold-gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            --royal-gradient: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
+        }
+          
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.25) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .royal-font { font-family: 'Cinzel', serif; }
+          
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+        }
+          
+        .header-bg {
+            background: var(--royal-gradient);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-bg::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            opacity: 0.05;
+            pointer-events: none;
+        }
+
+        .nav-btn {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            min-height: 85px;
+            border-radius: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            background: white;
+            color: #64748b;
+        }
+        .nav-btn.active {
+            background-color: white;
+            color: var(--emerald-600);
+            border-color: var(--emerald-500);
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.2);
+        }
+
+        .logo-frame {
+            background: white;
+            border-radius: 1.25rem;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .form-input {
+            background-color: #f1f5f9;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .form-input:focus {
+            background-color: #ffffff;
+            border-color: var(--emerald-600);
+            outline: none;
+            transform: translateY(-2px);
+        }
+        .form-input.valid {
+            border-color: var(--emerald-500);
+            background-color: #f0fdf4;
+        }
+
+        @keyframes modalUp { 
+            from { opacity: 0; transform: translateY(40px) scale(0.9); } 
+            to { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+
+        .vip-ticket {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .gold-text {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+        .ticket-perforation::before, .ticket-perforation::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: #0f172a;
+            border-radius: 50%;
+            z-index: 10;
+        }
+        .ticket-perforation::before { left: -15px; }
+        .ticket-perforation::after { right: -15px; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        #notification-container {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 10000;
+            pointer-events: none;
+        }
+        
+        #qrReader {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 2rem;
+        }
+        
+        #qrReader video {
+            object-fit: cover !important;
+            border-radius: 2rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="notification-container" class="flex flex-col gap-4"></div>
+
+    <div id="app" class="relative z-10 w-full max-w-4xl mx-auto min-h-screen md:my-10 md:rounded-[3rem] overflow-hidden flex flex-col glass-panel shadow-2xl">
+          
+        <!-- Loading State -->
+        <div id="loading" class="absolute inset-0 z-[9999] bg-slate-50 flex flex-col justify-center items-center px-6 text-center">
+            <img src="logo tugu manihuruk.png" alt="Logo" class="w-32 h-32 animate-bounce mb-8">
+            <h2 class="text-3xl font-black text-emerald-900 mb-2 royal-font uppercase">BONATAON 2026</h2>
+            <div class="flex items-center gap-3 text-emerald-600 font-bold mt-4 bg-emerald-50 px-6 py-3 rounded-full shadow-sm">
+                <i class="fas fa-circle-notch fa-spin"></i> Menyiapkan Sistem...
+            </div>
+        </div>
+
+        <header class="header-bg p-10 pb-24 shadow-2xl relative z-20">
+            <div class="flex justify-between items-start relative z-10">
+                <div class="flex items-center gap-6">
+                    <div id="adminTrigger" class="logo-frame w-16 h-16 md:w-24 md:h-24 p-2 border-2 border-white/20">
+                        <img src="logo tugu manihuruk.png" alt="Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h1 class="text-lg md:text-2xl font-black text-white royal-font tracking-wide uppercase leading-tight">
+                            BONATAON MARGA MANIHURUK<br><span class="text-emerald-300">BORU BERE / PANAGOLAN 2026</span>
+                        </h1>
+                        <div id="roleBadge" class="hidden inline-block mt-3 px-4 py-1.5 bg-amber-400 text-amber-900 text-[10px] font-black rounded-full uppercase tracking-widest shadow-xl border border-amber-300"></div>
+                    </div>
+                </div>
+                <div id="liveClock" class="text-right text-white hidden md:block backdrop-blur-md bg-white/10 p-3 rounded-2xl border border-white/10"></div>
+            </div>
+              
+            <div class="grid grid-cols-3 gap-6 mt-10 relative z-10">
+                <div class="bg-white/10 backdrop-blur-xl rounded-[2rem] p-4 border border-white/20 text-center shadow-lg">
+                    <div class="text-2xl md:text-4xl font-black text-white" id="statRegistered">0</div>
+                    <div class="text-[10px] font-extrabold text-emerald-200 uppercase tracking-widest mt-1">Peserta</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-xl rounded-[2rem] p-4 border border-white/20 text-center shadow-lg">
+                    <div class="text-2xl md:text-4xl font-black text-white" id="statPresent">0</div>
+                    <div class="text-[10px] font-extrabold text-emerald-200 uppercase tracking-widest mt-1">Hadir</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-xl rounded-[2rem] p-4 border border-white/20 text-center shadow-lg">
+                    <div class="text-2xl md:text-4xl font-black text-white" id="statGifts">0</div>
+                    <div class="text-[10px] font-extrabold text-amber-100 uppercase tracking-widest mt-1">Berkat</div>
+                </div>
+            </div>
+        </header>
+
+        <nav id="mainNav" class="flex px-6 -mt-12 relative z-30 gap-3 overflow-x-auto pb-6 no-scrollbar">
+            <button id="nav-register" class="nav-btn public-tab flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-user-plus text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Daftar</span>
+            </button>
+            <button id="nav-find" class="nav-btn public-tab flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-search text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Undangan</span>
+            </button>
+            <button id="nav-scan" class="nav-btn admin-tab staff-tab hidden flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-qrcode text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Absensi</span>
+            </button>
+            <button id="nav-gift" class="nav-btn admin-tab staff-tab hidden flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-gift text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Berkat</span>
+            </button>
+            <button id="nav-report" class="nav-btn admin-tab hidden flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-chart-line text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Report</span>
+            </button>
+            <button id="nav-data" class="nav-btn admin-tab hidden flex-1 min-w-[110px] shadow-2xl">
+                <i class="fas fa-shield-halved text-emerald-600"></i><span class="text-[10px] font-black uppercase tracking-widest">Admin</span>
+            </button>
+            <button id="nav-logout" class="hidden min-w-[110px] bg-red-50 text-red-600 border border-red-100 shadow-xl nav-btn">
+                <i class="fas fa-power-off"></i><span class="text-[10px] font-black uppercase tracking-widest">Keluar</span>
+            </button>
+        </nav>
+
+        <main class="flex-1 p-6 md:p-12 overflow-y-auto bg-slate-50/50 pb-28">
+            <div id="content-area"></div>
+        </main>
+          
+        <footer class="py-6 px-10 border-t border-slate-200 bg-white absolute bottom-0 w-full z-20">
+            <div class="flex justify-between items-center text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
+                <div>© 2026 PANITIA BONATAON</div>
+                <div class="text-emerald-900">MANIHURUK BERSATU</div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modal-container"></div>
+
+    <!-- LOGIKA APLIKASI (MODULE SCRIPT) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue, set, update, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // --- FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1jqsGb3gIGEhg8qo37oMAANNcKDdDuFU",
+            authDomain: "bonataon-2026.firebaseapp.com",
+            databaseURL: "https://bonataon-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bonataon-2026",
+            storageBucket: "bonataon-2026.firebasestorage.app",
+            messagingSenderId: "392578784070",
+            appId: "1:392578784070:web:f85870afad7f202a592347"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- GLOBAL STATE ---
+        let state = {
+            participants: [],
+            attendance: [],
+            gifts: [],
+            staff: [],
+            tab: 'register',
+            scanner: null,
+            isAdmin: false,
+            isStaff: false,
+            adminPass: "123456",
+            recoveryKey: "BONA2026",
+            activeUser: null,
+            tempUser: null,
+            reportSearch: "",
+            adminSearch: "",
+            filterStatus: "Semua",
+            charts: {},
+            isProcessingScan: false
+        };
+
+        // --- CORE UI UTILS ---
+        const showToast = (title, body, type = 'success') => {
+            const container = document.getElementById('notification-container');
+            if(!container) return;
+            const toast = document.createElement('div');
+            const borderColor = type === 'error' ? 'border-red-500' : 'border-emerald-500';
+            const iconBg = type === 'error' ? 'bg-red-500' : 'bg-emerald-500';
+            const icon = type === 'error' ? 'fa-triangle-exclamation' : 'fa-bell';
+            
+            toast.className = `glass-panel p-5 rounded-3xl shadow-2xl border-l-4 ${borderColor} flex items-center gap-4 animate-[modalUp_0.4s]`;
+            toast.innerHTML = `
+                <div class="w-12 h-12 ${iconBg} text-white rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-lg"><i class="fas ${icon}"></i></div>
+                <div>
+                    <div class="text-xs font-black text-slate-800 uppercase tracking-tight">${title}</div>
+                    <div class="text-[10px] text-slate-500 font-bold uppercase mt-1 opacity-70">${body}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)'; toast.style.transition = '0.5s ease'; setTimeout(() => toast.remove(), 500); }, 5000);
+        };
+
+        const openModal = (html, id = 'dynamicModal') => {
+            const container = document.getElementById('modal-container');
+            if(!container) return;
+            container.innerHTML = `
+                <div id="${id}" class="fixed inset-0 z-[9000] flex items-center justify-center p-6 overflow-y-auto">
+                    <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onclick="document.getElementById('${id}').classList.add('hidden')"></div>
+                    <div class="bg-white rounded-[3rem] w-full max-w-md relative z-10 p-10 shadow-2xl animate-[modalUp_0.4s]">
+                        ${html}
+                    </div>
+                </div>
+            `;
+        };
+
+        const closeModal = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
+
+        // --- DATA BINDING ---
+        const updateDashboard = () => {
+            const sr = document.getElementById('statRegistered');
+            const sp = document.getElementById('statPresent');
+            const sg = document.getElementById('statGifts');
+            if(sr) sr.innerText = state.participants.length;
+            if(sp) sp.innerText = state.attendance.length;
+            if(sg) sg.innerText = state.gifts.length;
+            
+            if (state.tab === 'register') renderRegister();
+            if (state.tab === 'report') renderReport();
+            if (state.tab === 'data') renderAdmin();
+            
+            const loader = document.getElementById('loading');
+            if (loader) setTimeout(() => loader.classList.add('hidden'), 500);
+        };
+
+        // --- VALIDATION HELPERS ---
+        const setupPinValidation = (inputId, hintId) => {
+            const input = document.getElementById(inputId);
+            const hint = document.getElementById(hintId);
+            if (!input || !hint) return;
+
+            input.oninput = (e) => {
+                let val = e.target.value;
+                // Only allow digits
+                val = val.replace(/\D/g, '');
+                e.target.value = val;
+
+                if (val.length >= 6) {
+                    hint.innerText = "PIN Valid ✓";
+                    hint.classList.remove('text-slate-400', 'text-red-500');
+                    hint.classList.add('text-emerald-500');
+                    input.classList.add('valid');
+                } else if (val.length > 0) {
+                    hint.innerText = `Kurang ${6 - val.length} digit lagi...`;
+                    hint.classList.remove('text-emerald-500', 'text-slate-400');
+                    hint.classList.add('text-red-500');
+                    input.classList.remove('valid');
+                } else {
+                    hint.innerText = "Min. 6 Digit Angka";
+                    hint.classList.remove('text-emerald-500', 'text-red-500');
+                    hint.classList.add('text-slate-400');
+                    input.classList.remove('valid');
+                }
+            };
+        };
+
+        // --- VIEWS RENDERING ---
+        const renderRegister = () => {
+            const area = document.getElementById('content-area');
+            if(!area) return;
+            const recent = state.participants.slice(-10).reverse();
+            area.innerHTML = `
+                <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl mb-10 border border-slate-100 animate-[modalUp_0.5s]">
+                    <div class="flex items-center gap-4 mb-10">
+                        <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 text-xl shadow-inner"><i class="fas fa-id-card"></i></div>
+                        <div><h3 class="text-xl font-black text-slate-800 uppercase royal-font tracking-tight">Form Pendaftaran</h3><p class="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">Silakan lengkapi data di bawah ini</p></div>
+                    </div>
+                    <div class="space-y-6">
+                        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Nama Lengkap</label><input id="inName" type="text" class="form-input w-full rounded-2xl p-5 font-black uppercase" placeholder="Masukkan Nama Anda"></div>
+                        <div class="grid grid-cols-2 gap-5">
+                            <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Kategori</label><select id="inStatus" class="form-input w-full rounded-2xl p-5 font-black uppercase"><option value="Orangtua">Orangtua</option><option value="Pemuda">Pemuda</option><option value="Sekolah Minggu">Sekolah Minggu</option><option value="Tamu">Tamu</option></select></div>
+                            <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label><select id="inMarga" class="form-input w-full rounded-2xl p-5 font-black uppercase"><option value="Manihuruk">Manihuruk</option><option value="Boru">Boru</option><option value="Bere">Bere</option></select></div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Keamanan (6-8 Digit)</label>
+                            <input id="inPass" type="password" inputmode="numeric" maxlength="8" class="form-input w-full rounded-2xl p-5 font-black text-center text-3xl tracking-[0.5em]" placeholder="••••••••">
+                            <div id="pinHint" class="text-[9px] font-bold mt-2 pl-2 text-slate-400 uppercase tracking-widest transition-colors">Min. 6 Digit Angka</div>
+                        </div>
+                        <button id="btnReg" class="w-full bg-emerald-600 text-white rounded-[1.5rem] py-5 font-black shadow-xl hover:bg-emerald-700 transition-all uppercase tracking-[0.2em] mt-4 flex items-center justify-center gap-3"><i class="fas fa-paper-plane text-sm"></i> DAFTARKAN SAYA</button>
+                    </div>
+                </div>
+                <div class="px-2">
+                    <div class="flex justify-between items-center mb-6 px-4"><h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendaftar Terkini</h5><div class="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full">Total: ${state.participants.length}</div></div>
+                    <div class="space-y-3">
+                        ${recent.map(p => `<div class="bg-white p-5 rounded-[1.5rem] flex justify-between items-center shadow-lg border border-slate-100 animate-[modalUp_0.3s]"><div><div class="font-black text-sm text-slate-800 uppercase leading-tight">${p.name}</div><div class="flex items-center gap-2 mt-1"><span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">${p.marga}</span><span class="text-[8px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">${p.qrCode}</span></div></div><div class="text-[9px] font-black bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-full uppercase border border-emerald-100 shadow-sm">${p.status}</div></div>`).join('') || '<div class="text-center py-16 text-slate-300 font-black text-xs uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-[2.5rem]">Belum Ada Pendaftar</div>'}
+                    </div>
+                </div>
+            `;
+            const btnReg = document.getElementById('btnReg');
+            if(btnReg) btnReg.onclick = handleRegistration;
+            setupPinValidation('inPass', 'pinHint');
+        };
+
+        const handleRegistration = () => {
+            const nameEl = document.getElementById('inName'), passEl = document.getElementById('inPass'), statEl = document.getElementById('inStatus'), margaEl = document.getElementById('inMarga');
+            const n = nameEl.value.trim().toUpperCase(), p = passEl.value, s = statEl.value, m = margaEl.value;
+            
+            if (!n) {
+                showToast("Nama Kosong", "Harap masukkan nama lengkap Anda.", "error");
+                nameEl.focus();
+                return;
+            }
+            if (p.length < 6) {
+                showToast("PIN Tidak Valid", "PIN harus terdiri dari minimal 6 digit angka.", "error");
+                passEl.focus();
+                return;
+            }
+
+            const code = `MN-${Date.now().toString().slice(-8)}`;
+            const data = { name: n, status: s, marga: m, password: p, qrCode: code, registeredAt: new Date().toLocaleString() };
+            push(ref(db, 'participants'), data).then(() => { 
+                showToast("Pendaftaran Berhasil!", `${n} telah resmi terdaftar.`); 
+                showTicket(data); 
+                nameEl.value = ''; 
+                passEl.value = ''; 
+            });
+        };
+
+        // --- NAVIGATION & TICKET AUTH ---
+        // Pindahkan setTab dan handleTicketAuth ke sini agar tidak duplikat dan mudah diakses
+        const setTab = async (t) => {
+            if (state.scanner) { try { await state.scanner.stop(); } catch (e) {} state.scanner = null; }
+            state.tab = t;
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.id === `nav-${t}`));
+            if (t === 'register') renderRegister();
+            else if (t === 'find') {
+                const area = document.getElementById('content-area');
+                if(!area) return;
+                area.innerHTML = `
+                    <div class="bg-white rounded-[2.5rem] p-10 md:p-16 shadow-2xl text-center border border-slate-100 animate-[modalUp_0.4s]">
+                        <div class="w-24 h-24 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-10 text-emerald-600 text-4xl shadow-inner"><i class="fas fa-magnifying-glass"></i></div>
+                        <h3 class="font-black text-2xl mb-10 text-slate-800 uppercase royal-font tracking-tight">Temukan Undangan</h3>
+                        <div class="space-y-6"><input id="findIn" type="text" placeholder="Masukkan Nama Lengkap Anda" class="form-input w-full rounded-2xl p-6 text-center font-black uppercase text-lg shadow-inner"><button id="btnFind" class="w-full bg-emerald-700 text-white rounded-[1.5rem] py-6 font-black hover:bg-emerald-800 transition-all shadow-2xl uppercase tracking-[0.2em]">CARI TIKET</button></div>
+                    </div>
+                `;
+                const findBtn = document.getElementById('btnFind');
+                if(findBtn) {
+                    findBtn.onclick = () => {
+                        const q = document.getElementById('findIn').value.trim().toLowerCase();
+                        if (!q) return alert("Masukkan nama!");
+                        const found = state.participants.filter(p => p.name.toLowerCase().includes(q));
+                        if (!found.length) return alert("Data tidak ditemukan!");
+                        
+                        if (found.length === 1) {
+                            handleTicketAuth(found[0]); 
+                        } else {
+                            handleMultipleFound(found);
+                        }
+                    };
+                }
+            }
+            else if (t === 'scan' || t === 'gift') renderScan(t);
+            else if (t === 'report') renderReport();
+            else if (t === 'data') renderAdmin();
+        };
+
+        const handleTicketAuth = (user) => {
+            const html = `<h3 class="text-2xl font-black text-slate-800 text-center uppercase royal-font mb-4 tracking-tight">Verifikasi</h3><p class="text-[10px] text-slate-400 font-black text-center mb-8 uppercase tracking-widest">Masukkan PIN untuk <span class="text-emerald-600">${user.name}</span></p><input type="password" id="pinAuth" inputmode="numeric" maxlength="8" class="form-input w-full rounded-2xl p-6 text-center text-4xl font-black mb-8 tracking-[0.5em] shadow-inner" placeholder="••••••••"><div class="grid grid-cols-2 gap-4"><button onclick="document.getElementById('authModal').classList.add('hidden')" class="py-5 border-2 border-slate-100 rounded-2xl font-black text-slate-400 uppercase tracking-widest text-xs">Batal</button><button id="btnVerify" class="py-5 bg-emerald-600 text-white rounded-2xl font-black shadow-xl uppercase tracking-widest text-xs">KONFIRMASI</button></div>`;
+            openModal(html, 'authModal');
+            const verifyBtn = document.getElementById('btnVerify');
+            if(verifyBtn) {
+                verifyBtn.onclick = () => { 
+                    const pin = document.getElementById('pinAuth').value; 
+                    if (pin === user.password) { closeModal('authModal'); window.showTicket(user); } else alert("PIN Salah!"); 
+                };
+            }
+        };
+
+        // --- TICKET VIEW ---
+        window.showTicket = async (user) => {
+            state.activeUser = user;
+            const html = `
+                <div id="vipTicketCard" class="vip-ticket rounded-[3rem] p-10 shadow-2xl border border-white/10 relative overflow-hidden">
+                    <div class="relative z-10 text-center">
+                        <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl overflow-hidden"><img src="logo tugu manihuruk.png" class="w-14 h-14"></div>
+                        <div class="inline-block bg-white/10 backdrop-blur-md border border-white/20 text-white text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-2">OFFICIAL INVITATION</div>
+                        <h2 class="royal-font text-3xl font-black gold-text uppercase leading-none mt-2">BONATAON 2026</h2>
+                        <div class="my-10">
+                            <p class="text-slate-500 text-[10px] font-black uppercase mb-2 tracking-[0.3em]">Tamu Kehormatan</p>
+                            <h1 class="text-2xl font-black text-white leading-tight uppercase mb-4">${user.name}</h1>
+                            <div class="inline-flex gap-2 text-[9px] text-emerald-400 font-black uppercase tracking-widest bg-white/5 px-4 py-2 rounded-full border border-white/5">${user.marga} • ${user.status}</div>
+                        </div>
+                        <div class="ticket-perforation bg-white p-8 rounded-[2.5rem] shadow-2xl relative">
+                            <div id="qrLoading" class="w-48 h-48 mx-auto flex items-center justify-center bg-slate-50 rounded-2xl"><i class="fas fa-circle-notch fa-spin text-emerald-600 text-2xl"></i></div>
+                            <img id="ticQR" src="" class="w-52 h-52 object-contain mx-auto hidden rounded-xl">
+                            <div class="text-center mt-6"><div class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Registration Code</div><div class="text-xl font-mono font-black text-slate-900 bg-slate-50 py-2 rounded-xl">${user.qrCode}</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 flex flex-col gap-4">
+                    <button id="btnEditSelf" class="w-full py-5 rounded-[1.5rem] bg-amber-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-3 hover:bg-amber-600 transition-all uppercase tracking-widest"><i class="fas fa-user-edit"></i> PERBAIKI PROFIL</button>
+                    <button id="btnDlTicket" class="w-full py-5 rounded-[1.5rem] bg-slate-900 text-white font-black text-sm shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all uppercase tracking-widest"><i class="fas fa-download"></i> SIMPAN TIKET</button>
+                    <button onclick="document.getElementById('ticketModal').classList.add('hidden')" class="text-slate-400 text-[10px] font-black py-2 uppercase tracking-[0.4em]">Tutup</button>
+                </div>
+            `;
+            openModal(html, 'ticketModal');
+            const qrImg = document.getElementById('ticQR'), qrLoader = document.getElementById('qrLoading');
+            try { 
+                const url = await QRCode.toDataURL(user.qrCode, { errorCorrectionLevel: 'H', margin: 2, width: 800, color: { dark: "#064e3b", light: "#ffffff" } }); 
+                if(qrImg) qrImg.src = url; 
+                if(qrImg) qrImg.onload = () => { if (qrLoader) qrLoader.classList.add('hidden'); qrImg.classList.remove('hidden'); }; 
+            } catch (e) { console.error(e); }
+            const editBtn = document.getElementById('btnEditSelf');
+            const dlBtn = document.getElementById('btnDlTicket');
+            if(editBtn) editBtn.onclick = () => openEditUserModal(user);
+            if(dlBtn) dlBtn.onclick = handleDownloadTicket;
+        };
+
+        // NEW: Handle Duplicate Names with Selection Modal
+        const handleMultipleFound = (list) => {
+            const html = `
+                <h3 class="text-xl font-black text-slate-800 text-center uppercase royal-font mb-2">Pilih Data Anda</h3>
+                <p class="text-[10px] text-slate-400 font-black text-center mb-6 uppercase tracking-widest">Ditemukan ${list.length} nama serupa</p>
+                <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-1 no-scrollbar">
+                    ${list.map(p => `
+                        <button onclick="window.selectDuplicate('${p.firebaseId}')" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:bg-emerald-50 hover:border-emerald-200 transition-all text-left group relative overflow-hidden">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="font-black text-slate-800 text-sm uppercase group-hover:text-emerald-700 relative z-10">${p.name}</div>
+                                <div class="text-[10px] font-mono font-bold text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-lg group-hover:text-emerald-600 group-hover:border-emerald-200 shadow-sm">${p.qrCode}</div>
+                            </div>
+                            <div class="flex items-center gap-2 relative z-10">
+                                <span class="text-[9px] font-black text-white bg-slate-400 px-3 py-1 rounded-full uppercase group-hover:bg-emerald-500 transition-colors">${p.marga}</span>
+                                <span class="text-[9px] font-bold text-slate-500 uppercase group-hover:text-emerald-600 transition-colors">${p.status}</span>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="mt-6">
+                    <button onclick="document.getElementById('duplicateModal').classList.add('hidden')" class="w-full py-4 border-2 border-slate-100 rounded-2xl font-black text-slate-400 uppercase tracking-widest text-xs hover:bg-slate-50">Batal</button>
+                </div>
+            `;
+            openModal(html, 'duplicateModal');
+        };
+
+        window.selectDuplicate = (id) => {
+            closeModal('duplicateModal');
+            const user = state.participants.find(p => p.firebaseId === id);
+            if(user) handleTicketAuth(user);
+        };
+
+        const openEditUserModal = (user) => {
+            closeModal('ticketModal');
+            const html = `
+                <h3 class="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3 royal-font uppercase tracking-tight"><i class="fas fa-user-pen text-emerald-600"></i> Perbarui Profil</h3>
+                <div class="space-y-6">
+                    <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Nama Lengkap</label><input id="editName" type="text" value="${user.name}" class="form-input w-full rounded-2xl p-4 font-black uppercase"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Kategori</label><select id="editStatus" class="form-input w-full rounded-2xl p-4 font-black"><option value="Orangtua" ${user.status==='Orangtua'?'selected':''}>Orangtua</option><option value="Pemuda" ${user.status==='Pemuda'?'selected':''}>Pemuda</option><option value="Sekolah Minggu" ${user.status==='Sekolah Minggu'?'selected':''}>Sekolah Minggu</option><option value="Tamu" ${user.status==='Tamu'?'selected':''}>Tamu</option></select></div>
+                        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label><select id="editMarga" class="form-input w-full rounded-2xl p-4 font-black"><option value="Manihuruk" ${user.marga==='Manihuruk'?'selected':''}>Manihuruk</option><option value="Boru" ${user.marga==='Boru'?'selected':''}>Boru</option><option value="Bere" ${user.marga==='Bere'?'selected':''}>Bere</option></select></div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Keamanan</label>
+                        <input id="editPass" type="password" inputmode="numeric" maxlength="8" value="${user.password}" class="form-input w-full rounded-2xl p-4 font-black text-center text-3xl tracking-[0.5em]">
+                        <div id="editPinHint" class="text-[9px] font-bold mt-2 pl-2 text-emerald-500 uppercase tracking-widest transition-colors">PIN Valid ✓</div>
+                    </div>
+                    <div class="pt-6 grid grid-cols-2 gap-4"><button onclick="document.getElementById('editUserModal').classList.add('hidden')" class="py-4 border-2 border-slate-100 rounded-2xl font-black text-slate-400 text-xs uppercase">Batal</button><button id="btnSaveEdit" class="py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-xl text-xs uppercase">Simpan</button></div>
+                </div>
+            `;
+            openModal(html, 'editUserModal');
+            setupPinValidation('editPass', 'editPinHint');
+            
+            const saveBtn = document.getElementById('btnSaveEdit');
+            if(saveBtn) {
+                saveBtn.onclick = () => {
+                    const n = document.getElementById('editName').value.trim().toUpperCase(), s = document.getElementById('editStatus').value, m = document.getElementById('editMarga').value, p = document.getElementById('editPass').value;
+                    if (!n) return showToast("Nama Kosong", "Gagal menyimpan: Nama tidak boleh kosong.", "error");
+                    if (p.length < 6) return showToast("PIN Invalid", "Gagal menyimpan: PIN minimal 6 digit.", "error");
+                    
+                    const uId = user.firebaseId || state.participants.find(x => x.qrCode === user.qrCode)?.firebaseId;
+                    if(!uId) return alert("Data tidak ditemukan");
+                    update(ref(db, 'participants/' + uId), { name: n, status: s, marga: m, password: p }).then(() => { 
+                        showToast("Profil Diperbarui", `Data untuk ${n} berhasil disimpan.`); 
+                        closeModal('editUserModal'); 
+                        if(state.tab !== 'data') window.showTicket({...user, name: n, status: s, marga: m, password: p, firebaseId: uId}); 
+                    });
+                };
+            }
+        };
+
+        const handleDownloadTicket = () => {
+            const card = document.getElementById('vipTicketCard');
+            if(!card) return;
+            html2canvas(card, { scale: 3, backgroundColor: '#0f172a' }).then(canvas => {
+                const link = document.createElement('a'); link.download = `Tiket_Bonataon_${state.activeUser.name}.png`; link.href = canvas.toDataURL(); link.click();
+            });
+        };
+
+        // --- ADMIN LOGIN & UI ---
+        const renderAdminLogin = () => {
+            const html = `
+                <div class="text-center mb-8"><div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner transform rotate-12"><i class="fas fa-lock text-3xl"></i></div><h3 class="text-2xl font-black text-slate-800 tracking-tight uppercase royal-font">Akses Panitia</h3><p class="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-[0.2em]">Verifikasi Keamanan</p></div>
+                <input type="password" id="adminPassword" placeholder="••••••••" maxlength="12" class="form-input w-full rounded-2xl p-5 text-center text-4xl font-black mb-6 tracking-[0.5em] shadow-inner">
+                <button id="btnLoginAdmin" class="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black hover:bg-emerald-700 transition-all shadow-xl uppercase tracking-widest">MASUK</button>
+                <div class="mt-6 text-center"><button id="btnForgotAdmin" class="text-xs font-black text-emerald-600 uppercase tracking-widest underline underline-offset-8">Lupa PIN Admin?</button></div>
+            `;
+            openModal(html, 'adminModal');
+            const loginBtn = document.getElementById('btnLoginAdmin');
+            if(loginBtn) {
+                loginBtn.onclick = () => {
+                    const pin = document.getElementById('adminPassword').value;
+                    if (pin === state.adminPass) { state.isAdmin = true; state.isStaff = false; closeModal('adminModal'); refreshUI(); setTab('report'); } 
+                    else { const staff = state.staff.find(s => s.pin === pin); if (staff) { state.isStaff = true; state.isAdmin = false; closeModal('adminModal'); refreshUI(); setTab('scan'); } else { alert("PIN Salah!"); } }
+                };
+            }
+            const forgotBtn = document.getElementById('btnForgotAdmin');
+            if(forgotBtn) forgotBtn.onclick = renderAdminRecovery;
+        };
+
+        // --- ADMIN RECOVERY (REFACTORED) ---
+        const renderAdminRecovery = () => {
+            closeModal('adminModal');
+            const html = `
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner"><i class="fas fa-shield-halved text-3xl"></i></div>
+                    <h3 class="text-2xl font-black text-slate-800 uppercase royal-font tracking-tight">Recovery Admin</h3>
+                    <p class="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">Gunakan Kode Pemulihan Anda</p>
+                </div>
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Kode Pemulihan</label>
+                        <input id="recKey" type="text" placeholder="BONA2026" class="form-input w-full rounded-2xl p-4 font-black uppercase tracking-widest text-center border-slate-200">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Admin Baru</label>
+                        <input id="recNewPin" type="password" inputmode="numeric" maxlength="12" placeholder="••••••••" class="form-input w-full rounded-2xl p-4 font-black text-center text-2xl tracking-[0.5em]">
+                        <div id="recPinHint" class="text-[9px] font-bold mt-2 pl-2 text-slate-400 uppercase tracking-widest">Min. 6 Digit Angka</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <button onclick="closeModal('recoveryModal'); renderAdminLogin();" class="py-5 border-2 border-slate-100 rounded-2xl font-black text-slate-400 text-xs uppercase tracking-widest">Batal</button>
+                        <button id="btnSubmitRecovery" class="py-5 bg-emerald-600 text-white rounded-2xl font-black shadow-xl text-xs uppercase tracking-widest">Reset PIN</button>
+                    </div>
+                </div>
+            `;
+            openModal(html, 'recoveryModal');
+            setupPinValidation('recNewPin', 'recPinHint');
+            
+            document.getElementById('btnSubmitRecovery').onclick = () => {
+                const key = document.getElementById('recKey').value.trim();
+                const newPin = document.getElementById('recNewPin').value;
+                
+                if (key !== state.recoveryKey) {
+                    showToast("Recovery Gagal", "Kode Pemulihan Salah!", "error");
+                    return;
+                }
+                
+                if (newPin.length < 6) {
+                    showToast("Input Invalid", "PIN Baru minimal 6 digit!", "error");
+                    return;
+                }
+                
+                set(ref(db, 'settings/adminPin'), newPin).then(() => {
+                    showToast("PIN Berhasil Diperbarui", "Gunakan PIN baru untuk akses admin.");
+                    closeModal('recoveryModal');
+                    renderAdminLogin();
+                }).catch(err => {
+                    alert("Gagal memperbarui PIN: " + err.message);
+                });
+            };
+        };
+
+        const refreshUI = () => {
+            const roleBadge = document.getElementById('roleBadge'), logoutBtn = document.getElementById('nav-logout'), navItems = document.querySelectorAll('.nav-btn');
+            if (state.isAdmin || state.isStaff) { if(roleBadge) { roleBadge.classList.remove('hidden'); roleBadge.innerText = state.isAdmin ? "Mode Administrator" : "Petugas Lapangan"; } if(logoutBtn) logoutBtn.classList.remove('hidden'); } 
+            else { if(roleBadge) roleBadge.classList.add('hidden'); if(logoutBtn) logoutBtn.classList.add('hidden'); }
+            navItems.forEach(btn => {
+                const isStaffT = btn.classList.contains('staff-tab'), isAdminT = btn.classList.contains('admin-tab'), isPublicT = btn.classList.contains('public-tab');
+                if (state.isAdmin) btn.classList.remove('hidden');
+                else if (state.isStaff) { if (isStaffT || isPublicT) btn.classList.remove('hidden'); else btn.classList.add('hidden'); }
+                else { if (isPublicT) btn.classList.remove('hidden'); else btn.classList.add('hidden'); }
+            });
+        };
+
+        // --- REPORT & CHARTS ---
+        const renderReport = () => {
+            const area = document.getElementById('content-area'), recentL = state.attendance.slice(-10).reverse();
+            if(!area) return;
+            area.innerHTML = `
+                <div class="space-y-8 animate-[modalUp_0.5s]">
+                    <div class="flex justify-between items-center px-4"><h3 class="text-2xl font-black text-slate-800 royal-font uppercase tracking-tight flex items-center gap-3"><span class="live-dot"></span> Live Monitoring</h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100"><h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Demografi Peserta</h4><div class="relative aspect-square"><canvas id="catChart"></canvas></div></div>
+                        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-col max-h-[400px]"><h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Log Kehadiran</h4><div class="flex-1 overflow-y-auto pr-2 space-y-3 no-scrollbar">${recentL.map(l => `<div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg"><i class="fas fa-check text-xs"></i></div><div><div class="font-black text-slate-800 text-xs uppercase">${l.name}</div><div class="text-[9px] text-slate-400 font-bold mt-1">${l.timestamp}</div></div></div>`).join('') || '<div class="text-center py-20 text-slate-300 font-black text-[10px] uppercase">Belum Ada Data</div>'}</div></div>
+                    </div>
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
+                        <div class="flex flex-wrap justify-between items-center gap-5 mb-8"><h4 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-3"><i class="fas fa-list-check text-emerald-600"></i> Detail Kehadiran</h4><div class="relative w-full md:w-64"><input type="text" id="repSearch" value="${state.reportSearch}" placeholder="CARI PESERTA..." class="form-input w-full rounded-2xl py-3 px-10 text-[10px] font-black uppercase shadow-sm"><i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px]"></i></div></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left text-[10px]"><thead class="bg-slate-50 text-slate-400 font-black uppercase tracking-widest border-b border-slate-100"><tr><th class="p-4">Peserta</th><th class="p-4">Kategori</th><th class="p-4">Status</th><th class="p-4">Waktu</th></tr></thead><tbody class="divide-y divide-slate-50">${state.participants.filter(p => p.name.toLowerCase().includes(state.reportSearch.toLowerCase())).map(p => { const log = state.attendance.find(a => a.qrCode === p.qrCode); return `<tr><td class="p-4"><div class="font-black text-slate-800 text-[11px] uppercase">${p.name}</div><div class="text-[8px] font-bold text-slate-400 mt-0.5">${p.marga}</div></td><td class="p-4 font-bold text-slate-500 uppercase">${p.status}</td><td class="p-4">${log ? '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-wider">HADIR</span>' : '<span class="bg-slate-100 text-slate-300 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-wider">BELUM</span>'}</td><td class="p-4 font-mono font-bold text-slate-400">${log ? log.timestamp.split(',')[1] : '-'}</td></tr>`; }).join('')}</tbody></table></div>
+                    </div>
+                </div>
+            `;
+            const searchIn = document.getElementById('repSearch');
+            if(searchIn) searchIn.onkeyup = (e) => { state.reportSearch = e.target.value; renderReport(); };
+            
+            const chartCanvas = document.getElementById('catChart');
+            if(chartCanvas) {
+                const ctx = chartCanvas.getContext('2d');
+                const labels = ['Orangtua', 'Pemuda', 'Sekolah Minggu', 'Tamu'], data = labels.map(l => state.participants.filter(p => p.status === l).length);
+                if (state.charts.catChart) state.charts.catChart.destroy();
+                state.charts.catChart = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: ['#064e3b', '#10b981', '#34d399', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { weight: '800', size: 10 }, padding: 20 } } }, cutout: '70%' } });
+            }
+        };
+
+        // --- ADMIN PANEL ---
+        const renderAdmin = () => {
+            const area = document.getElementById('content-area');
+            if(!area) return;
+
+            // 1. Helper function untuk generate rows (agar bisa dipanggil ulang tanpa re-render seluruh layout)
+            const generateRows = () => {
+                return state.participants.filter(p => p.name.toLowerCase().includes(state.adminSearch.toLowerCase()) && (state.filterStatus==='Semua' || p.status===state.filterStatus)).map(p => `<tr><td class="p-6"><div class="font-black text-slate-800 text-sm uppercase">${p.name}</div><div class="text-[9px] font-mono text-emerald-500 mt-1 font-bold">${p.qrCode}</div></td><td class="p-6"><span class="bg-slate-100 px-3 py-1 rounded-full font-black text-slate-500">${p.status}</span></td><td class="p-6 text-center flex justify-center gap-2">
+                            <button onclick="window.adminEditPart('${p.firebaseId}')" class="text-blue-500 hover:text-blue-600 w-9 h-9 flex items-center justify-center bg-blue-50 rounded-xl shadow-sm border border-blue-100" title="Edit Data"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="window.adminResetPIN('${p.firebaseId}', '${p.name}')" class="text-amber-500 hover:text-amber-600 w-9 h-9 flex items-center justify-center bg-amber-50 rounded-xl shadow-sm border border-amber-100" title="Reset PIN"><i class="fas fa-key text-xs"></i></button>
+                            <button onclick="window.adminDeletePart('${p.firebaseId}')" class="text-red-400 hover:text-red-600 w-9 h-9 flex items-center justify-center bg-red-50 rounded-xl shadow-sm border border-red-100" title="Hapus"><i class="fas fa-trash text-xs"></i></button>
+                        </td></tr>`).join('');
+            };
+
+            // 2. Simpan state fokus jika sedang mengetik (untuk menangani re-render dari update data realtime)
+            const activeEl = document.activeElement;
+            const isSearchFocused = activeEl && activeEl.id === 'admSearch';
+            const cursorStart = isSearchFocused ? activeEl.selectionStart : 0;
+            const cursorEnd = isSearchFocused ? activeEl.selectionEnd : 0;
+
+            area.innerHTML = `
+                <div class="space-y-8 animate-[modalUp_0.5s]">
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100">
+                        <div class="flex flex-wrap justify-between items-center gap-5 mb-10">
+                            <h3 class="text-xl font-black text-slate-800 flex items-center gap-3 tracking-tight uppercase royal-font"><i class="fas fa-crown text-emerald-600"></i> Admin Panel</h3>
+                            <div class="flex flex-wrap gap-3">
+                                <button id="btnExpAll" class="bg-amber-100 px-5 py-3 rounded-2xl text-amber-900 text-[10px] font-black uppercase tracking-widest shadow-md flex items-center gap-2 border border-amber-200">
+                                    <i class="fas fa-file-export"></i> EKSPOR SEMUA DATA
+                                </button>
+                                <button id="btnExpPart" class="bg-emerald-50 px-5 py-3 rounded-2xl text-emerald-700 text-[10px] font-black uppercase tracking-widest shadow-sm">PENDAFTAR</button>
+                                <button id="btnExpAtt" class="bg-emerald-50 px-5 py-3 rounded-2xl text-emerald-700 text-[10px] font-black uppercase tracking-widest shadow-sm">ABSENSI</button>
+                                <button id="btnExpGift" class="bg-emerald-50 px-5 py-3 rounded-2xl text-emerald-700 text-[10px] font-black uppercase tracking-widest shadow-sm">BERKAT</button>
+                                <button id="btnResetAll" class="bg-red-50 px-5 py-3 rounded-2xl text-red-700 text-[10px] font-black uppercase tracking-widest shadow-sm">RESET SISTEM</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10"><div class="relative"><input type="text" id="admSearch" value="${state.adminSearch}" placeholder="CARI PESERTA..." class="form-input w-full rounded-2xl py-4 px-12 text-xs font-black uppercase"><i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300"></i></div><select id="admFilter" class="form-input rounded-2xl px-5 py-4 text-xs font-black bg-slate-50 border-slate-200"><option value="Semua">SEMUA KATEGORI</option><option value="Orangtua" ${state.filterStatus==='Orangtua'?'selected':''}>ORANGTUA</option><option value="Pemuda" ${state.filterStatus==='Pemuda'?'selected':''}>PEMUDA</option><option value="Sekolah Minggu" ${state.filterStatus==='Sekolah Minggu'?'selected':''}>SEKOLAH MINGGU</option><option value="Tamu" ${state.filterStatus==='Tamu'?'selected':''}>TAMU</option></select></div>
+                        <div class="overflow-x-auto rounded-3xl border border-slate-100 mb-12"><table class="w-full text-left text-[11px]"><thead class="bg-slate-50 text-slate-400 font-black uppercase tracking-widest border-b border-slate-100"><tr><th class="p-6">Informasi</th><th class="p-6">Kategori</th><th class="p-6 text-center">Aksi</th></tr></thead>
+                        <tbody id="admTableBody" class="divide-y divide-slate-50">${generateRows()}</tbody></table></div>
+                        <div class="border-t border-slate-100 pt-12"><div class="flex items-center gap-3 mb-8"><div class="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-users-gear"></i></div><h4 class="text-xs font-black text-slate-800 uppercase tracking-widest">Manajemen Staff</h4></div><div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8"><div class="md:col-span-5"><input id="stfName" type="text" placeholder="NAMA LENGKAP" class="form-input w-full rounded-2xl p-4 text-[11px] font-black uppercase shadow-inner"></div><div class="md:col-span-3"><input id="stfPin" type="password" maxlength="6" placeholder="PIN (6 DIG)" class="form-input w-full rounded-2xl p-4 text-[11px] font-black text-center shadow-inner"></div><div class="md:col-span-4"><button id="btnAddStaff" class="w-full h-full bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition-all shadow-xl py-4 md:py-0">TAMBAH</button></div></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${state.staff.map(s => `<div class="bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100 flex justify-between items-center shadow-sm"><div><div class="font-black text-slate-800 text-[11px] uppercase tracking-wide">${s.name}</div><div class="text-[9px] text-emerald-600 font-black uppercase mt-1 bg-emerald-50 px-2 py-0.5 rounded-full inline-block border border-emerald-100">PIN: ${s.pin}</div></div><button onclick="window.adminRemoveStaff('${s.firebaseId}')" class="text-red-400 hover:text-red-600 w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-inner border border-slate-100"><i class="fas fa-trash-can text-xs"></i></button></div>`).join('') || '<div class="col-span-full text-center py-10 text-slate-300 font-black text-[10px] uppercase">Belum Ada Petugas</div>'}</div></div>
+                    </div>
+                </div>
+            `;
+            
+            // 3. Kembalikan fokus ke input search jika sebelumnya sedang fokus
+            if (isSearchFocused) {
+                const newSearch = document.getElementById('admSearch');
+                if (newSearch) {
+                    newSearch.focus();
+                    newSearch.setSelectionRange(cursorStart, cursorEnd);
+                }
+            }
+
+            const searchIn = document.getElementById('admSearch');
+            const filterIn = document.getElementById('admFilter');
+            const staffAdd = document.getElementById('btnAddStaff');
+            const expAllBtn = document.getElementById('btnExpAll');
+            const expBtn = document.getElementById('btnExpPart');
+            const expAttBtn = document.getElementById('btnExpAtt');
+            const expGiftBtn = document.getElementById('btnExpGift');
+            const resetBtn = document.getElementById('btnResetAll');
+            
+            // 4. Modifikasi Event Listener: Update tabel saja secara parsial, JANGAN render ulang layout!
+            if(searchIn) searchIn.onkeyup = (e) => { 
+                state.adminSearch = e.target.value; 
+                const tbody = document.getElementById('admTableBody');
+                if (tbody) tbody.innerHTML = generateRows();
+            };
+            
+            if(filterIn) filterIn.onchange = (e) => { 
+                state.filterStatus = e.target.value; 
+                const tbody = document.getElementById('admTableBody');
+                if (tbody) tbody.innerHTML = generateRows();
+            };
+            
+            if(staffAdd) staffAdd.onclick = handleAddStaff;
+            
+            if(expAllBtn) expAllBtn.onclick = () => {
+                if(!state.participants.length && !state.attendance.length && !state.gifts.length) {
+                    return alert("Tidak ada data untuk diekspor.");
+                }
+                exportToCSV(state.participants, "01_Data_Pendaftar_Lengkap");
+                setTimeout(() => exportToCSV(state.attendance, "02_Data_Absensi_Hadir"), 500);
+                setTimeout(() => exportToCSV(state.gifts, "03_Data_Penerima_Berkat"), 1000);
+                showToast("Ekspor Massal", "Ketiga file sedang diunduh secara berurutan.");
+            };
+
+            if(expBtn) expBtn.onclick = () => exportToCSV(state.participants, "Pendaftar");
+            if(expAttBtn) expAttBtn.onclick = () => exportToCSV(state.attendance, "Absensi_Kehadiran");
+            if(expGiftBtn) expGiftBtn.onclick = () => exportToCSV(state.gifts, "Berkat_Diterima");
+            
+            if(resetBtn) resetBtn.onclick = () => { if (confirm("Ketik 'RESET' untuk menghapus data?")) { const v = prompt("Ketik RESET:"); if (v === 'RESET') { Promise.all([set(ref(db, 'participants'), null), set(ref(db, 'attendance'), null), set(ref(db, 'gifts'), null)]).then(() => alert("Bersih!")); } } };
+        };
+
+        const handleAddStaff = () => {
+            const nameEl = document.getElementById('stfName');
+            const pinEl = document.getElementById('stfPin');
+            const n = nameEl.value.trim().toUpperCase(), p = pinEl.value;
+            if (!n || p.length < 6) return alert("Validasi Gagal!");
+            push(ref(db, 'staff'), { name: n, pin: p }).then(() => { 
+                showToast("Staff Ditambah", n); 
+                nameEl.value = ''; 
+                pinEl.value = ''; 
+            });
+        };
+
+        const exportToCSV = (data, name) => {
+            if(!data.length) return; // Silent return for mass export
+            // Membersihkan data dari firebaseId jika ada untuk ekspor yang lebih bersih
+            const cleanData = data.map(({ firebaseId, password, ...rest }) => rest);
+            const headers = Object.keys(cleanData[0] || {}), rows = cleanData.map(o => headers.map(h => `"${o[h]}"`).join(","));
+            const content = "\ufeff" + headers.join(",") + "\n" + rows.join("\n"), blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${name}_Bonataon2026.csv`; link.click();
+        };
+
+        window.adminEditPart = (id) => {
+            const user = state.participants.find(p => p.firebaseId === id);
+            if(user) openEditUserModal(user);
+        };
+
+        // --- PARTICIPANT RESET (REFACTORED) ---
+        window.adminResetPIN = (id, name) => {
+            const html = `
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6"><i class="fas fa-key text-2xl"></i></div>
+                    <h3 class="text-xl font-black text-slate-800 uppercase royal-font">Reset PIN Peserta</h3>
+                    <p class="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">${name}</p>
+                </div>
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Baru (6-8 Digit)</label>
+                        <input id="newPartPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••••••" class="form-input w-full rounded-2xl p-4 font-black text-center text-3xl tracking-[0.5em] shadow-inner">
+                        <div id="resetPinHint" class="text-[9px] font-bold mt-2 pl-2 text-slate-400 uppercase tracking-widest">Min. 6 Digit Angka</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <button onclick="closeModal('resetPinModal')" class="py-4 border-2 border-slate-100 rounded-2xl font-black text-slate-400 text-[10px] uppercase tracking-widest">Batal</button>
+                        <button id="btnConfirmReset" class="py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-xl text-[10px] uppercase tracking-widest">Simpan</button>
+                    </div>
+                </div>
+            `;
+            openModal(html, 'resetPinModal');
+            setupPinValidation('newPartPin', 'resetPinHint');
+            
+            document.getElementById('btnConfirmReset').onclick = () => {
+                const pin = document.getElementById('newPartPin').value;
+                if (pin.length < 6) {
+                    showToast("Input Invalid", "PIN minimal 6 digit!", "error");
+                    return;
+                }
+                update(ref(db, 'participants/' + id), { password: pin }).then(() => {
+                    showToast("PIN Berhasil Direset", `PIN untuk ${name} telah diperbarui.`);
+                    closeModal('resetPinModal');
+                }).catch(err => alert("Gagal: " + err.message));
+            };
+        };
+
+        window.adminDeletePart = (id) => { if (confirm("Hapus?")) remove(ref(db, 'participants/' + id)); };
+        window.adminRemoveStaff = (id) => { if (confirm("Hapus Staff?")) remove(ref(db, 'staff/' + id)); };
+
+        // --- SCANNER LOGIC ---
+        const renderScan = (type) => {
+            const area = document.getElementById('content-area');
+            if(!area) return;
+            area.innerHTML = `
+                <div class="bg-white rounded-[2.5rem] p-10 shadow-2xl text-center border border-slate-100 animate-[modalUp_0.5s]">
+                    <h3 class="font-black mb-8 text-slate-800 tracking-tight uppercase royal-font text-2xl">SCAN ${type === 'scan' ? 'KEHADIRAN' : 'BERKAT'}</h3>
+                    <div id="scanMsg" class="hidden p-5 rounded-2xl mb-8 text-white font-black shadow-xl animate-bounce"></div>
+                    <div class="relative rounded-[2.5rem] overflow-hidden bg-black aspect-square max-w-sm mx-auto mb-10 shadow-2xl border-4 border-emerald-500/20"><div id="qrReader"></div></div>
+                    <button id="btnManual" class="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-xs shadow-2xl flex items-center justify-center gap-4 hover:bg-black transition-all uppercase tracking-widest"><i class="fas fa-keyboard"></i> INPUT MANUAL</button>
+                </div>
+            `;
+            
+            // KONFIGURASI SCANNER TINGKAT TINGGI
+            state.scanner = new Html5Qrcode("qrReader");
+            
+            const scanConfig = { 
+                fps: 30, // Tingkatkan FPS agar lebih responsif (Sensitive)
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    // Responsive scanning box (70% dari ukuran terkecil)
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    return { width: Math.floor(minEdge * 0.7), height: Math.floor(minEdge * 0.7) };
+                },
+                aspectRatio: 1.0,
+                // Optimasi: Hanya deteksi QR Code (abaikan barcode belanja) untuk performa maksimal
+                formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // Gunakan Hardware Acceleration jika tersedia (Laptop/HP Modern)
+                }
+            };
+
+            state.scanner.start(
+                { facingMode: "environment" }, 
+                scanConfig, 
+                (text) => handleScanProcess(text.trim().toUpperCase(), type)
+            ).catch(e => {
+                console.error("Scanner Error:", e);
+                // Fallback jika kamera gagal (opsional)
+            });
+
+            const manualBtn = document.getElementById('btnManual');
+            if(manualBtn) manualBtn.onclick = () => { const code = prompt("Masukkan Kode (MN-XXXX):"); if (code) handleScanProcess(code.trim().toUpperCase(), type); };
+        };
+
+        const handleScanProcess = (code, type) => {
+            if (state.isProcessingScan) return; state.isProcessingScan = true;
+            const msg = document.getElementById('scanMsg'), p = state.participants.find(x => x.qrCode === code);
+            if (!p) { 
+                if(msg) {
+                    msg.innerText = "TIDAK TERDAFTAR!"; 
+                    msg.className = "p-5 rounded-2xl mb-8 bg-red-600 text-white font-black block"; 
+                    setTimeout(() => { if(msg) msg.classList.add('hidden'); state.isProcessingScan = false; }, 3000); 
+                } else { state.isProcessingScan = false; }
+                return; 
+            }
+            const path = type === 'scan' ? 'attendance' : 'gifts', list = type === 'scan' ? state.attendance : state.gifts;
+            if (list.some(l => l.qrCode === code)) { 
+                if(msg) {
+                    msg.innerText = "SUDAH TERDATA!"; 
+                    msg.className = "p-5 rounded-2xl mb-8 bg-amber-500 text-white font-black block"; 
+                    setTimeout(() => { if(msg) msg.classList.add('hidden'); state.isProcessingScan = false; }, 3000); 
+                } else { state.isProcessingScan = false; }
+                return; 
+            }
+            push(ref(db, path), { name: p.name, qrCode: code, timestamp: new Date().toLocaleString() }).then(() => { 
+                if(msg) {
+                    msg.innerText = `SUKSES: ${p.name}!`; 
+                    msg.className = "p-5 rounded-2xl mb-8 bg-emerald-600 text-white font-black block"; 
+                    showToast("Berhasil!", p.name); 
+                    setTimeout(() => { if(msg) msg.classList.add('hidden'); state.isProcessingScan = false; }, 3000); 
+                } else { state.isProcessingScan = false; }
+            });
+        };
+
+        // --- DATA LISTENERS ---
+        onValue(ref(db, 'participants'), s => { state.participants = s.val() ? Object.keys(s.val()).map(k => ({...s.val()[k], firebaseId: k})) : []; updateDashboard(); });
+        onValue(ref(db, 'attendance'), s => { state.attendance = s.val() ? Object.values(s.val()) : []; updateDashboard(); });
+        onValue(ref(db, 'gifts'), s => { state.gifts = s.val() ? Object.values(s.val()) : []; updateDashboard(); });
+        onValue(ref(db, 'staff'), s => { state.staff = s.val() ? Object.keys(s.val()).map(k => ({...s.val()[k], firebaseId: k})) : []; updateDashboard(); });
+        onValue(ref(db, 'settings/adminPin'), s => { if (s.val()) state.adminPass = s.val(); });
+
+        // Clock
+        setInterval(() => { const el = document.getElementById('liveClock'); if (!el) return; const now = new Date(); el.innerHTML = `<div class="text-[10px] font-black opacity-60 uppercase tracking-widest mb-1">${now.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</div><div class="text-2xl font-black">${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</div>`; }, 1000);
+
+        // Events
+        const trigger = document.getElementById('adminTrigger');
+        if(trigger) trigger.onclick = renderAdminLogin;
+        
+        const navReg = document.getElementById('nav-register'),
+              navFind = document.getElementById('nav-find'),
+              navScan = document.getElementById('nav-scan'),
+              navGift = document.getElementById('nav-gift'),
+              navRep = document.getElementById('nav-report'),
+              navData = document.getElementById('nav-data'),
+              navLogout = document.getElementById('nav-logout');
+
+        if(navReg) navReg.onclick = () => setTab('register');
+        if(navFind) navFind.onclick = () => setTab('find');
+        if(navScan) navScan.onclick = () => setTab('scan');
+        if(navGift) navGift.onclick = () => setTab('gift');
+        if(navRep) navRep.onclick = () => setTab('report');
+        if(navData) navData.onclick = () => setTab('data');
+        if(navLogout) navLogout.onclick = () => { if (confirm("Keluar?")) { state.isAdmin = false; state.isStaff = false; refreshUI(); setTab('register'); } };
+
+        setTab('register'); refreshUI();
+        window.closeModal = closeModal;
+        window.renderAdminLogin = renderAdminLogin;
+    </script>
+</body>
+</html>
+
