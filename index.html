@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bonataon Marga Manihuruk Boru Bere / Panagolan 2026</title>
+    <title>Bonataon Dolog Masagal Tangerang 2026</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:wght@700;800;900&family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
@@ -199,7 +199,7 @@
                     </div>
                     <div>
                         <h1 class="text-lg md:text-2xl font-black text-white royal-font tracking-wide uppercase leading-tight">
-                            BONATAON MARGA MANIHURUK<br><span class="text-emerald-300">BORU BERE / PANAGOLAN 2026</span>
+                            BONATAON<br>DOLOG MASAGAL TANGERANG<br><span class="text-emerald-300">2026</span>
                         </h1>
                         <div id="roleBadge" class="hidden inline-block mt-3 px-4 py-1.5 bg-amber-400 text-amber-900 text-[10px] font-black rounded-full uppercase tracking-widest shadow-xl border border-amber-300"></div>
                     </div>
@@ -254,7 +254,7 @@
         <footer class="py-6 px-10 border-t border-slate-200 bg-white absolute bottom-0 w-full z-20">
             <div class="flex justify-between items-center text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
                 <div>© 2026 PANITIA BONATAON</div>
-                <div class="text-emerald-900">MANIHURUK BERSATU</div>
+                <div class="text-emerald-900">DOLOG MASAGAL TANGERANG</div>
             </div>
         </footer>
     </div>
@@ -403,7 +403,16 @@
                         <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Nama Lengkap</label><input id="inName" type="text" class="form-input w-full rounded-2xl p-5 font-black uppercase" placeholder="Masukkan Nama Anda"></div>
                         <div class="grid grid-cols-2 gap-5">
                             <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Kategori</label><select id="inStatus" class="form-input w-full rounded-2xl p-5 font-black uppercase"><option value="Orangtua">Orangtua</option><option value="Pemuda">Pemuda</option><option value="Sekolah Minggu">Sekolah Minggu</option><option value="Tamu">Tamu</option></select></div>
-                            <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label><select id="inMarga" class="form-input w-full rounded-2xl p-5 font-black uppercase"><option value="Manihuruk">Manihuruk</option><option value="Boru">Boru</option><option value="Bere">Bere</option></select></div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label>
+                                <select id="inMarga" class="form-input w-full rounded-2xl p-5 font-black uppercase">
+                                    <option value="Purba Sidadolog">Purba Sidadolog</option>
+                                    <option value="Purba Sidagambir">Purba Sidagambir</option>
+                                    <option value="Boru">Boru</option>
+                                    <option value="Panagolan">Panagolan</option>
+                                    <option value="Tamu Undangan">Tamu Undangan</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Keamanan (6-8 Digit)</label>
@@ -580,7 +589,16 @@
                     <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Nama Lengkap</label><input id="editName" type="text" value="${user.name}" class="form-input w-full rounded-2xl p-4 font-black uppercase"></div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Kategori</label><select id="editStatus" class="form-input w-full rounded-2xl p-4 font-black"><option value="Orangtua" ${user.status==='Orangtua'?'selected':''}>Orangtua</option><option value="Pemuda" ${user.status==='Pemuda'?'selected':''}>Pemuda</option><option value="Sekolah Minggu" ${user.status==='Sekolah Minggu'?'selected':''}>Sekolah Minggu</option><option value="Tamu" ${user.status==='Tamu'?'selected':''}>Tamu</option></select></div>
-                        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label><select id="editMarga" class="form-input w-full rounded-2xl p-4 font-black"><option value="Manihuruk" ${user.marga==='Manihuruk'?'selected':''}>Manihuruk</option><option value="Boru" ${user.marga==='Boru'?'selected':''}>Boru</option><option value="Bere" ${user.marga==='Bere'?'selected':''}>Bere</option></select></div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">Marga</label>
+                            <select id="editMarga" class="form-input w-full rounded-2xl p-4 font-black">
+                                <option value="Purba Sidadolog" ${user.marga==='Purba Sidadolog'?'selected':''}>Purba Sidadolog</option>
+                                <option value="Purba Sidagambir" ${user.marga==='Purba Sidagambir'?'selected':''}>Purba Sidagambir</option>
+                                <option value="Boru" ${user.marga==='Boru'?'selected':''}>Boru</option>
+                                <option value="Panagolan" ${user.marga==='Panagolan'?'selected':''}>Panagolan</option>
+                                <option value="Tamu Undangan" ${user.marga==='Tamu Undangan'?'selected':''}>Tamu Undangan</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block pl-2">PIN Keamanan</label>
