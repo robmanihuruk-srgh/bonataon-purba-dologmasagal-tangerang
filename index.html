@@ -6714,6 +6714,9 @@
       
       const allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .card-title, .panel-title, div, span, strong, th');
       for (const el of allElements) {
+        // JANGAN bajak elemen di dalam modal (mis. modal "Kelola Anggota Grup"),
+        // karena modal punya struktur & tombol sendiri (input, daftar, tombol Tutup).
+        if (el.closest('.modal')) continue;
         const text = (el.textContent || el.innerText || '').trim().toLowerCase();
         if (keywords.some(k => text === k || text.includes(k))) {
           if (text.length < 40 && el.children.length <= 1) {
