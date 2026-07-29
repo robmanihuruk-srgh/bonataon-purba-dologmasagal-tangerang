@@ -1076,6 +1076,11 @@
           <i class="fas fa-history"></i> Riwayat & Log
         </button>
 
+        <!-- TOMBOL ARSIP RAPAT (SOFT DELETE / PULIHKAN) -->
+        <button class="btn-header" id="btn-open-arsip-rapat" onclick="window.openMeetingArchiveModal && window.openMeetingArchiveModal()" style="background: rgba(21,128,61,0.07); border-color: #15803d; color: #15803d; font-weight: 600;" title="Lihat & pulihkan rapat yang diarsipkan">
+          <i class="fas fa-box-archive"></i> Arsip Rapat
+        </button>
+
         <!-- INTEGRASI NOTIFIKASI -->
         <div class="notification-wrapper" id="notifWrapper" style="display: none;">
           <button class="notification-btn" id="notifBtn">
@@ -2595,6 +2600,7 @@
         // Tampilkan rapat pribadi milik sendiri ATAU yang dibagikan ke email user ini
         const userEmail = currentUser?.email?.toLowerCase() || '';
         const privateMeetings = meetings.filter(m => {
+          if (m.deletedAt) return false; // rapat terarsip: sembunyikan dari daftar
           if (m.workspaceId) return false; // bukan rapat pribadi
           if (m.createdBy === currentUser?.uid) return true; // milik sendiri
           // Dibagikan: cek field sharedWith (array email)
@@ -3022,7 +3028,7 @@
 
       function renderWorkspaceMeetings(workspaceId) {
         currentTeamId = null; renderTeamList();
-        const workspaceMeetings = meetings.filter(m => m.workspaceId === workspaceId);
+        const workspaceMeetings = meetings.filter(m => m.workspaceId === workspaceId && !m.deletedAt);
         const content = document.getElementById('contentArea');
         if (workspaceMeetings.length === 0) {
           content.innerHTML = '<div style="text-align:center; color:var(--color-text-light); margin-top:60px; font-family:var(--font-body);"><i class="fas fa-users" style="font-size:2rem; margin-bottom:12px; color:var(--color-border);"></i><br>Belum ada rapat di grup ini.<br>Klik tombol "Rapat baru" untuk membuat rapat.</div>';
@@ -3646,14 +3652,18 @@
           alert('Anda tidak memiliki izin untuk menghapus rapat ini.');
           return;
         }
-        if (!confirm('Hapus rapat ini? Semua seksi dan tugas akan ikut terhapus.')) return;
+        if (!confirm('Pindahkan rapat ini ke Arsip? Rapat akan disembunyikan namun masih bisa dipulihkan dari menu Arsip Rapat.')) return;
         try {
           const _delMeeting = meetings.find(m => m.id === meetingId);
-          await db.collection('meetings').doc(meetingId).delete();
-          if (window.addWorkspaceLog) window.addWorkspaceLog(`Menghapus rapat: "${_delMeeting?.title || meetingId}"`);
+          // SOFT DELETE: tandai sebagai terarsip, JANGAN hapus permanen.
+          await db.collection('meetings').doc(meetingId).update({
+            deletedAt: new Date().toISOString(),
+            deletedBy: currentUser?.email || currentUser?.uid || 'unknown'
+          });
+          if (window.addWorkspaceLog) window.addWorkspaceLog(`Mengarsipkan rapat: "${_delMeeting?.title || meetingId}"`);
           if (currentMeetingId === meetingId) currentMeetingId = null;
         } catch (error) {
-          alert('Gagal menghapus rapat: ' + error.message);
+          alert('Gagal mengarsipkan rapat: ' + error.message);
         }
       }
 
@@ -4480,16 +4490,19 @@
         if (userRole !== 'admin') return;
         const total = selectedMeetingIds.size + selectedWorkspaceIds.size;
         if (total === 0) return;
-        if (!confirm(`Hapus ${total} item terpilih? (Rapat dan grup akan dihapus beserta seluruh isinya)`)) return;
+        if (!confirm(`Arsipkan ${total} item terpilih? (Rapat akan dipindah ke Arsip dan masih bisa dipulihkan)`)) return;
 
+        const _nowIso = new Date().toISOString();
+        const _by = currentUser?.email || currentUser?.uid || 'unknown';
         const promises = [];
         selectedMeetingIds.forEach(id => {
-          promises.push(db.collection('meetings').doc(id).delete());
+          // SOFT DELETE: arsipkan, jangan hapus permanen
+          promises.push(db.collection('meetings').doc(id).update({ deletedAt: _nowIso, deletedBy: _by }));
         });
         for (const wsId of selectedWorkspaceIds) {
           const groupMeetings = meetings.filter(m => m.workspaceId === wsId);
           for (const m of groupMeetings) {
-            promises.push(db.collection('meetings').doc(m.id).delete());
+            promises.push(db.collection('meetings').doc(m.id).update({ deletedAt: _nowIso, deletedBy: _by }));
           }
           promises.push(db.collection('workspaces').doc(wsId).delete());
         }
@@ -4499,7 +4512,8 @@
           selectedMeetingIds.clear();
           selectedWorkspaceIds.clear();
           updateDeleteSelectedButton();
-          if (currentMeetingId && !meetings.find(m => m.id === currentMeetingId)) {
+          const _cm = currentMeetingId ? meetings.find(m => m.id === currentMeetingId) : null;
+          if (currentMeetingId && (!_cm || _cm.deletedAt)) {
             currentMeetingId = null;
             renderDetail(null);
           }
@@ -8602,6 +8616,134 @@ document.addEventListener("DOMContentLoaded", () => {
     .rich-editor-area, .rich-content { border: none !important; background: transparent !important; padding: 0 !important; }
   }
 </style>
+
+<!-- ========================================================= -->
+<!-- MODAL ARSIP RAPAT (SOFT DELETE / PULIHKAN / HAPUS PERMANEN) -->
+<!-- ========================================================= -->
+<div class="modal" id="meetingArchiveModal">
+  <div class="modal-content" style="max-width: 620px;">
+    <h3><i class="fas fa-box-archive"></i> Arsip Rapat</h3>
+    <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: 16px;">
+      <i class="fas fa-info-circle"></i> Rapat yang Anda hapus dipindahkan ke sini dan tidak hilang. Klik <strong>Pulihkan</strong> untuk mengembalikannya.
+    </p>
+    <div id="meetingArchiveList" style="max-height: 55vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
+    <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn-secondary" id="closeMeetingArchiveModal">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function fmtWhen(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleString('id-ID'); } catch (e) { return iso; }
+  }
+
+  function getArchivedMeetings() {
+    if (typeof meetings === 'undefined' || !Array.isArray(meetings)) return [];
+    const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+    const email = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email.toLowerCase() : '';
+    const isAdmin = (typeof userRole !== 'undefined' && userRole === 'admin');
+    return meetings.filter(m => {
+      if (!m.deletedAt) return false;
+      if (isAdmin) return true;
+      if (m.createdBy === uid) return true;
+      if (m.sharedWith && Array.isArray(m.sharedWith)) {
+        return m.sharedWith.map(e => (e || '').toLowerCase()).includes(email);
+      }
+      return false;
+    }).sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
+  }
+
+  function safeText(s) {
+    if (typeof escapeHtml === 'function') return escapeHtml(s || '');
+    return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderArchiveList() {
+    const box = document.getElementById('meetingArchiveList');
+    if (!box) return;
+    const list = getArchivedMeetings();
+    box.innerHTML = '';
+    if (list.length === 0) {
+      box.innerHTML = '<p style="color: var(--color-text-light); font-style: italic; padding: 12px; text-align:center;">Tidak ada rapat di arsip.</p>';
+      return;
+    }
+    list.forEach(m => {
+      const row = document.createElement('div');
+      row.style = 'display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--color-border); border-radius:10px; background:#ffffff;';
+      row.innerHTML =
+        '<div style="flex-grow:1; min-width:0;">' +
+          '<div style="font-weight:600; color:var(--color-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + safeText(m.title || 'Tanpa judul') + '</div>' +
+          '<div style="font-size:0.75rem; color:var(--color-text-light); margin-top:2px;">' +
+            '<i class="far fa-calendar-alt"></i> ' + safeText(m.date || '-') +
+            ' &middot; diarsipkan ' + safeText(fmtWhen(m.deletedAt)) +
+          '</div>' +
+        '</div>';
+
+      const btnRestore = document.createElement('button');
+      btnRestore.className = 'btn-primary';
+      btnRestore.style = 'padding:6px 12px; font-size:0.8rem; flex-shrink:0;';
+      btnRestore.innerHTML = '<i class="fas fa-undo"></i> Pulihkan';
+      btnRestore.addEventListener('click', () => restoreMeeting(m.id, m.title));
+
+      const btnPurge = document.createElement('button');
+      btnPurge.className = 'btn-delete-meeting';
+      btnPurge.style = 'padding:6px 12px; font-size:0.8rem; flex-shrink:0;';
+      btnPurge.innerHTML = '<i class="fas fa-trash"></i> Hapus Permanen';
+      btnPurge.addEventListener('click', () => purgeMeeting(m.id, m.title));
+
+      row.appendChild(btnRestore);
+      row.appendChild(btnPurge);
+      box.appendChild(row);
+    });
+  }
+
+  async function restoreMeeting(id, title) {
+    try {
+      await db.collection('meetings').doc(id).update({
+        deletedAt: firebase.firestore.FieldValue.delete(),
+        deletedBy: firebase.firestore.FieldValue.delete()
+      });
+      if (window.addWorkspaceLog) window.addWorkspaceLog('Memulihkan rapat: "' + (title || id) + '"');
+      renderArchiveList();
+    } catch (e) {
+      alert('Gagal memulihkan rapat: ' + e.message);
+    }
+  }
+
+  async function purgeMeeting(id, title) {
+    if (!confirm('Hapus PERMANEN rapat "' + (title || id) + '"?\n\nTindakan ini TIDAK BISA dibatalkan dan data akan hilang selamanya.')) return;
+    try {
+      await db.collection('meetings').doc(id).delete();
+      if (window.addWorkspaceLog) window.addWorkspaceLog('Menghapus permanen rapat: "' + (title || id) + '"');
+      renderArchiveList();
+    } catch (e) {
+      alert('Gagal menghapus permanen: ' + e.message);
+    }
+  }
+
+  window.openMeetingArchiveModal = function() {
+    renderArchiveList();
+    const modal = document.getElementById('meetingArchiveModal');
+    if (modal) modal.classList.add('active');
+  };
+
+  function closeModal() {
+    const modal = document.getElementById('meetingArchiveModal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const closeBtn = document.getElementById('closeMeetingArchiveModal');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    const modal = document.getElementById('meetingArchiveModal');
+    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  });
+})();
+</script>
+
 </body>
 </html>
 
