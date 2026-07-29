@@ -439,6 +439,18 @@
     .mom-table td { border-bottom: 1px solid var(--color-border); padding: 12px 16px; color: var(--color-text); }
     .mom-table tr:last-child td { border-bottom: none; }
     .mom-table tr:nth-child(even) { background: #f8fafc; }
+    /* Editor Agenda MoM */
+    #mom-agenda-table td { padding: 8px 10px; vertical-align: middle; }
+    #mom-agenda-table input.agenda-text, #mom-agenda-table input.agenda-pic { width: 100%; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-family: var(--font-body); font-size: 0.9rem; background: #fff; }
+    #mom-agenda-table input.agenda-text:focus, #mom-agenda-table input.agenda-pic:focus { outline: none; border-color: var(--color-primary); }
+    #mom-agenda-table tr.agenda-sub input.agenda-text { margin-left: 24px; width: calc(100% - 24px); background: #fbfbf7; }
+    #mom-agenda-table .agenda-num { font-weight: 600; color: var(--color-secondary); white-space: nowrap; }
+    #mom-agenda-table tr.agenda-sub .agenda-num { font-weight: 500; color: var(--color-text-light); padding-left: 20px; }
+    #mom-agenda-table .agenda-row-actions { text-align: center; white-space: nowrap; }
+    #mom-agenda-table .agenda-row-actions button { background: none; border: none; cursor: pointer; color: var(--color-text-light); padding: 4px 6px; font-size: 0.95rem; border-radius: 4px; }
+    #mom-agenda-table .agenda-row-actions button:hover { background: rgba(0,0,0,0.05); color: var(--color-secondary); }
+    #mom-agenda-table .agenda-row-actions button.agenda-del:hover { color: #dc2626; }
+    #mom-agenda-empty td { text-align: center; color: var(--color-text-light); font-style: italic; padding: 20px; }
 
     @media print {
       .sidebar, .sidebar-hover-trigger, .panel-header, .btn-add-section, .section-actions, .task-actions, .add-task-btn, .filter-row, .modal, .btn-header, .btn-edit-meeting, .btn-delete-meeting, .theme-switcher, #fontSwitcher, .user-info, .log-card, .notification-wrapper, #install-pwa-container { display: none !important; }
@@ -864,9 +876,30 @@
           <textarea id="mom-attendees" rows="2" placeholder="Nama peserta, pisahkan dengan koma..."></textarea>
       </div>
 
-      <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 20px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">2. Agenda & Poin Pembahasan</div>
+      <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 20px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">2. Agenda Rapat</div>
+
+      <div id="mom-agenda-editor">
+        <table class="mom-table" id="mom-agenda-table" style="margin-top:0;">
+          <thead>
+            <tr>
+              <th style="width:70px;">Level</th>
+              <th>Agenda</th>
+              <th style="width:220px;">PIC</th>
+              <th style="width:90px; text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="mom-agenda-tbody"></tbody>
+        </table>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" id="momAddAgendaMainBtn" style="padding:8px 14px;"><i class="fas fa-plus"></i> Poin Utama</button>
+          <button type="button" class="btn-secondary" id="momAddAgendaSubBtn" style="padding:8px 14px;"><i class="fas fa-level-down-alt"></i> Sub-poin</button>
+        </div>
+      </div>
+      <div id="mom-agenda-readonly-note" style="display:none; color: var(--color-text-light); font-size:0.85rem; margin-top:8px;"><i class="fas fa-lock"></i> Hanya admin/pembuat rapat yang dapat mengubah agenda.</div>
+
+      <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 20px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">2b. Poin Pembahasan / Hasil Rapat</div>
       <div class="form-group">
-          <textarea id="mom-discussion" rows="6" placeholder="Tuliskan detail pembahasan rapat, keputusan yang diambil, dsb..."></textarea>
+          <textarea id="mom-discussion" rows="6" placeholder="Tuliskan poin-poin pembahasan, keputusan, dan hasil rapat... (tekan Enter untuk memisahkan tiap poin — akan menjadi baris tabel pada PDF)"></textarea>
       </div>
 
       <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 16px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">3. Action Items</div>
@@ -2158,6 +2191,34 @@
         }
       };
 
+      function renderTeamCardInner(team) {
+        // Menghasilkan isi kartu (header + daftar anggota) untuk satu tim.
+        let inner = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border);">
+            <h4 style="margin: 0; color: var(--color-secondary); font-family: var(--font-heading);"><i class="fas fa-user-friends" style="color: var(--color-primary); margin-right: 8px;"></i>${escapeHtml(team.name || 'Tim')}</h4>
+            <span style="font-size: 0.75rem; background: var(--color-bg-light); padding: 2px 10px; border-radius: 12px; color: var(--color-text-light);">${team.members?.length || 0} anggota</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">`;
+
+        if (team.members && team.members.length > 0) {
+          team.members.forEach(member => {
+            const roleClass = member.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
+            const roleLabel = member.role === 'koordinator' ? 'Koordinator' : 'Anggota';
+            inner += `<div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
+              <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(member.name || member.email || '?').charAt(0).toUpperCase()}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary);">${escapeHtml(member.name || 'Tanpa Nama')}</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(member.email || '-')}</div>
+              </div>
+              <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem;">${roleLabel}</span>
+            </div>`;
+          });
+        } else {
+          inner += `<div style="text-align: center; color: var(--color-text-light); font-size: 0.85rem; padding: 12px;"><i class="fas fa-info-circle"></i> Belum ada anggota dalam tim ini.</div>`;
+        }
+        inner += `</div>`;
+        return inner;
+      }
+
       function renderAssignedTeams(meeting) {
         if (!meeting.assignedTeamIds || meeting.assignedTeamIds.length === 0) return '';
 
@@ -2167,39 +2228,57 @@
           </div>
           <div class="team-members-grid">`;
 
+        // Render sebuah kartu untuk SETIAP tim yang ditugaskan. Bila data tim belum ada di
+        // array lokal (mis. tim dibuat pengguna lain / belum termuat), tetap render kartu
+        // placeholder ber-id agar bisa diisi secara async dari Firestore setelahnya —
+        // sehingga tim yang ditugaskan tidak pernah "hilang" begitu saja.
         meeting.assignedTeamIds.forEach(teamId => {
           const team = teams.find(t => t.id === teamId);
-          if (!team) return;
-
-          html += `<div style="background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border);">
-              <h4 style="margin: 0; color: var(--color-secondary); font-family: var(--font-heading);"><i class="fas fa-user-friends" style="color: var(--color-primary); margin-right: 8px;"></i>${escapeHtml(team.name)}</h4>
-              <span style="font-size: 0.75rem; background: var(--color-bg-light); padding: 2px 10px; border-radius: 12px; color: var(--color-text-light);">${team.members?.length || 0} anggota</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">`;
-
-          if (team.members && team.members.length > 0) {
-            team.members.forEach(member => {
-              const roleClass = member.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
-              const roleLabel = member.role === 'koordinator' ? 'Koordinator' : 'Anggota';
-              html += `<div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
-                <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(member.name || '?').charAt(0).toUpperCase()}</div>
-                <div style="flex: 1; min-width: 0;">
-                  <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary);">${escapeHtml(member.name || 'Tanpa Nama')}</div>
-                  <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(member.email || '-')}</div>
-                </div>
-                <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem;">${roleLabel}</span>
-              </div>`;
-            });
+          const cardId = 'assigned-team-card-' + teamId;
+          html += `<div id="${cardId}" data-team-id="${escapeHtml(teamId)}" style="background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-bottom: 12px;">`;
+          if (team) {
+            html += renderTeamCardInner(team);
           } else {
-            html += `<div style="text-align: center; color: var(--color-text-light); font-size: 0.85rem; padding: 12px;"><i class="fas fa-info-circle"></i> Belum ada anggota dalam tim ini.</div>`;
+            html += `<div style="display:flex; align-items:center; gap:10px; color: var(--color-text-light); font-size: 0.9rem;">
+              <i class="fas fa-spinner fa-spin"></i> Memuat data tim...
+            </div>`;
           }
-
-          html += `</div></div>`;
+          html += `</div>`;
         });
 
         html += `</div></div>`;
         return html;
+      }
+
+      // Pengisian async: ambil tim yang ditugaskan namun belum termuat di array lokal
+      // langsung dari Firestore, lalu isi kartu placeholder-nya. Dipanggil setelah detail
+      // rapat dirender ke DOM.
+      async function enrichAssignedTeamCards(meeting) {
+        if (!meeting || !meeting.assignedTeamIds || meeting.assignedTeamIds.length === 0) return;
+        for (const teamId of meeting.assignedTeamIds) {
+          const card = document.getElementById('assigned-team-card-' + teamId);
+          if (!card) continue;
+          // Sudah terisi (bukan placeholder)? lewati.
+          if (!card.querySelector('.fa-spinner')) continue;
+          let team = teams.find(t => t.id === teamId);
+          if (!team) {
+            try {
+              const snap = await db.collection('teams').doc(teamId).get();
+              if (snap.exists) {
+                team = { id: snap.id, ...snap.data() };
+                // Cache ke array lokal agar render berikutnya instan
+                if (!teams.find(t => t.id === team.id)) teams.push(team);
+              }
+            } catch (e) {
+              console.error('Gagal memuat tim ditugaskan:', teamId, e);
+            }
+          }
+          if (team) {
+            card.innerHTML = renderTeamCardInner(team);
+          } else {
+            card.innerHTML = `<div style="color:#dc2626; font-size:0.85rem;"><i class="fas fa-exclamation-triangle"></i> Data tim tidak ditemukan (mungkin telah dihapus).</div>`;
+          }
+        }
       }
 
       function renderLogs(meeting) {
@@ -3179,6 +3258,9 @@
         }
 
         content.innerHTML = html;
+
+        // Isi kartu tim yang ditugaskan yang datanya belum termuat (ambil dari Firestore)
+        enrichAssignedTeamCards(meeting);
 
         // Attach tooltip events untuk stat items pada Dashboard Progress Rapat Ini
         setTimeout(() => {
@@ -5008,6 +5090,162 @@
         updateMeetingTeamSelect();
       }
 
+      // ========== MODUL EDITOR AGENDA MoM (tabel dinamis hierarkis) ==========
+      // Struktur data: array item { level: 'main' | 'sub', text: string, pic: string }
+      // Penomoran otomatis di-render: 'main' -> 1., 2., 3. ; 'sub' -> a., b., c. (reset tiap poin utama)
+      const MomAgenda = (function () {
+        let items = [];       // sumber kebenaran data agenda
+        let editable = true;  // apakah pengguna boleh mengubah
+        const tbody = () => document.getElementById('mom-agenda-tbody');
+
+        // Konversi index sub-poin (0-based) menjadi huruf: 0->a, 1->b, ... 25->z, 26->aa
+        function subLetter(n) {
+          let s = '';
+          n = n + 1;
+          while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(97 + r) + s; n = Math.floor((n - 1) / 26); }
+          return s;
+        }
+
+        // Hitung label nomor tiap baris berdasarkan urutan & level
+        function computeNumbers() {
+          const labels = [];
+          let mainCount = 0, subCount = 0;
+          items.forEach(it => {
+            if (it.level === 'sub') { labels.push(subLetter(subCount) + '.'); subCount++; }
+            else { mainCount++; subCount = 0; labels.push(mainCount + '.'); }
+          });
+          return labels;
+        }
+
+        function render() {
+          const body = tbody();
+          if (!body) return;
+          body.innerHTML = '';
+          if (items.length === 0) {
+            body.innerHTML = '<tr id="mom-agenda-empty"><td colspan="4">Belum ada agenda. Tekan "Poin Utama" untuk menambah.</td></tr>';
+            return;
+          }
+          const labels = computeNumbers();
+          items.forEach((it, i) => {
+            const tr = document.createElement('tr');
+            tr.className = it.level === 'sub' ? 'agenda-sub' : 'agenda-main';
+            const dis = editable ? '' : 'disabled';
+            tr.innerHTML =
+              '<td class="agenda-num">' + labels[i] + '</td>' +
+              '<td><input type="text" class="agenda-text" data-i="' + i + '" value="' + escapeHtml(it.text) + '" placeholder="Isi agenda..." ' + dis + '></td>' +
+              '<td><input type="text" class="agenda-pic" data-i="' + i + '" value="' + escapeHtml(it.pic) + '" placeholder="PIC (opsional)" ' + dis + '></td>' +
+              '<td class="agenda-row-actions">' +
+                (editable ?
+                  '<button type="button" class="agenda-up" data-i="' + i + '" title="Naik"><i class="fas fa-arrow-up"></i></button>' +
+                  '<button type="button" class="agenda-down" data-i="' + i + '" title="Turun"><i class="fas fa-arrow-down"></i></button>' +
+                  '<button type="button" class="agenda-del" data-i="' + i + '" title="Hapus"><i class="fas fa-trash"></i></button>'
+                  : '—') +
+              '</td>';
+            body.appendChild(tr);
+          });
+        }
+
+        // Sinkronkan nilai input ke array (dipanggil sebelum operasi struktural / simpan)
+        function syncFromDom() {
+          const body = tbody();
+          if (!body) return;
+          body.querySelectorAll('input.agenda-text').forEach(inp => {
+            const i = parseInt(inp.dataset.i, 10);
+            if (items[i]) items[i].text = inp.value;
+          });
+          body.querySelectorAll('input.agenda-pic').forEach(inp => {
+            const i = parseInt(inp.dataset.i, 10);
+            if (items[i]) items[i].pic = inp.value;
+          });
+        }
+
+        function addMain() {
+          if (!editable) return;
+          syncFromDom();
+          items.push({ level: 'main', text: '', pic: '' });
+          render();
+          focusLast();
+        }
+        function addSub() {
+          if (!editable) return;
+          syncFromDom();
+          // Jika belum ada poin utama sama sekali, buat satu dulu agar sub-poin bermakna
+          if (items.length === 0) items.push({ level: 'main', text: '', pic: '' });
+          items.push({ level: 'sub', text: '', pic: '' });
+          render();
+          focusLast();
+        }
+        function focusLast() {
+          const inputs = tbody().querySelectorAll('input.agenda-text');
+          if (inputs.length) inputs[inputs.length - 1].focus();
+        }
+
+        // Event delegation untuk tombol baris
+        function onBodyClick(e) {
+          const btn = e.target.closest('button');
+          if (!btn || !editable) return;
+          const i = parseInt(btn.dataset.i, 10);
+          if (isNaN(i)) return;
+          syncFromDom();
+          if (btn.classList.contains('agenda-del')) {
+            items.splice(i, 1);
+          } else if (btn.classList.contains('agenda-up')) {
+            if (i > 0) { const t = items[i]; items[i] = items[i - 1]; items[i - 1] = t; }
+          } else if (btn.classList.contains('agenda-down')) {
+            if (i < items.length - 1) { const t = items[i]; items[i] = items[i + 1]; items[i + 1] = t; }
+          }
+          render();
+        }
+
+        return {
+          init() {
+            document.getElementById('momAddAgendaMainBtn').addEventListener('click', addMain);
+            document.getElementById('momAddAgendaSubBtn').addEventListener('click', addSub);
+            const body = tbody();
+            if (body) body.addEventListener('click', onBodyClick);
+          },
+          load(data) {
+            // Terima array; jika bukan array (data lama) -> agenda kosong
+            items = Array.isArray(data)
+              ? data.map(d => ({
+                  level: d && d.level === 'sub' ? 'sub' : 'main',
+                  text: (d && d.text) ? String(d.text) : '',
+                  pic: (d && d.pic) ? String(d.pic) : ''
+                }))
+              : [];
+            render();
+          },
+          getData() {
+            syncFromDom();
+            // Buang baris yang benar-benar kosong (tanpa teks & tanpa PIC)
+            return items
+              .filter(it => (it.text && it.text.trim() !== '') || (it.pic && it.pic.trim() !== ''))
+              .map(it => ({ level: it.level, text: (it.text || '').trim(), pic: (it.pic || '').trim() }));
+          },
+          // Data siap-cetak untuk PDF: { label, text, pic, level }
+          getRenderRows() {
+            const data = this.getData();
+            // Hitung ulang label pada data bersih
+            const labels = [];
+            let mainCount = 0, subCount = 0;
+            data.forEach(it => {
+              if (it.level === 'sub') { labels.push(subLetter(subCount) + '.'); subCount++; }
+              else { mainCount++; subCount = 0; labels.push(mainCount + '.'); }
+            });
+            return data.map((it, i) => ({ label: labels[i], text: it.text, pic: it.pic, level: it.level }));
+          },
+          setEditable(v) {
+            editable = !!v;
+            document.getElementById('momAddAgendaMainBtn').style.display = editable ? '' : 'none';
+            document.getElementById('momAddAgendaSubBtn').style.display = editable ? '' : 'none';
+            const note = document.getElementById('mom-agenda-readonly-note');
+            if (note) note.style.display = editable ? 'none' : 'block';
+            render();
+          }
+        };
+      })();
+      MomAgenda.init();
+
       // ========== MOM NATIVE LOGIC ==========
       document.getElementById('btn-open-mom').addEventListener('click', () => {
           const meeting = meetings.find(m => m.id === currentMeetingId);
@@ -5023,16 +5261,19 @@
               document.getElementById('mom-location').value = meeting.mom.location || '';
               document.getElementById('mom-attendees').value = meeting.mom.attendees || '';
               document.getElementById('mom-discussion').value = meeting.mom.discussion || '';
+              MomAgenda.load(meeting.mom.agenda);
           } else {
               document.getElementById('mom-location').value = '';
               document.getElementById('mom-attendees').value = '';
               document.getElementById('mom-discussion').value = '';
+              MomAgenda.load(null);
           }
 
           // APLIKASIKAN ATURAN READ-ONLY BAGI PESERTA
           document.getElementById('mom-location').readOnly = !canEditMom;
           document.getElementById('mom-attendees').readOnly = !canEditMom;
           document.getElementById('mom-discussion').readOnly = !canEditMom;
+          MomAgenda.setEditable(canEditMom);
 
           if (canEditMom) {
               document.getElementById('saveMomBtn').style.display = 'inline-block';
@@ -5148,7 +5389,8 @@
           const momData = {
               location: document.getElementById('mom-location').value,
               attendees: document.getElementById('mom-attendees').value,
-              discussion: document.getElementById('mom-discussion').value
+              discussion: document.getElementById('mom-discussion').value,
+              agenda: MomAgenda.getData()
           };
           try {
               await db.collection('meetings').doc(currentMeetingId).update({ mom: momData });
@@ -5225,18 +5467,121 @@
           yPos = pdfEnsureSpace(yPos, 20);
           doc.setFont("helvetica", "bold");
           doc.setFontSize(11);
-          doc.text("B. AGENDA & POIN PEMBAHASAN", 14, yPos);
-          
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          yPos += 7;
-          const discussionTokens = pdfTokensFromRichHtml(discussionHtml || '');
-          if (discussionTokens.length === 0) discussionTokens.push({ type: 'text', text: '-', bold: false, italic: false, underline: false });
-          const discussionLines = pdfWrapRichTokens(doc, discussionTokens, 180, 10);
-          yPos = pdfDrawRichLinesPaged(doc, discussionLines, 14, yPos, 5, 10);
+          doc.text("B. AGENDA RAPAT", 14, yPos);
+          yPos += 5;
+
+          // === AGENDA RAPAT DALAM BENTUK TABEL (hierarkis: poin utama + sub-poin) ===
+          const agendaRows = (typeof MomAgenda !== 'undefined') ? MomAgenda.getRenderRows() : [];
+          if (agendaRows.length > 0) {
+            const agendaBody = agendaRows.map(r => {
+              // Sub-poin diberi indentasi visual pada kolom agenda
+              const indent = r.level === 'sub' ? '     ' : '';
+              return [r.label, indent + r.text, r.pic || '-'];
+            });
+            doc.autoTable({
+              startY: yPos,
+              head: [['No', 'Agenda', 'PIC']],
+              body: agendaBody,
+              theme: 'grid',
+              styles: { fontSize: 9, font: 'helvetica', valign: 'top' },
+              headStyles: { fillColor: [26, 43, 76], textColor: [255, 255, 255] },
+              alternateRowStyles: { fillColor: [248, 250, 252] },
+              columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 2: { cellWidth: 55 } },
+              didParseCell: function(data) {
+                // Tebalkan poin utama agar hierarki terlihat jelas
+                if (data.section === 'body') {
+                  const row = agendaRows[data.row.index];
+                  if (row && row.level === 'main') {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.textColor = [26, 43, 76];
+                  }
+                }
+              }
+            });
+            yPos = doc.lastAutoTable.finalY + 12;
+          } else {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(10);
+            doc.text("Tidak ada agenda yang dicatat.", 14, yPos + 5);
+            yPos += 15;
+          }
           pdfResetFont(doc);
 
-          yPos += 10;
+          // Sub-bagian: Poin Pembahasan / Hasil Rapat
+          yPos = pdfEnsureSpace(yPos, 20);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.text("B2. POIN PEMBAHASAN / HASIL RAPAT", 14, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          yPos += 5;
+
+          // === POIN PEMBAHASAN DALAM BENTUK TABEL ===
+          // Pecah token menjadi kelompok per baris (dipisah oleh 'break') -> tiap baris jadi 1 poin/1 baris tabel,
+          // dengan format Bold/Italic/Underline tetap dipertahankan seperti pada kolom Catatan.
+          const discussionTokens = pdfTokensFromRichHtml(discussionHtml || '');
+          const discussionGroups = [];
+          let curGroup = [];
+          discussionTokens.forEach(tok => {
+            if (tok.type === 'break') {
+              discussionGroups.push(curGroup);
+              curGroup = [];
+            } else {
+              curGroup.push(tok);
+            }
+          });
+          discussionGroups.push(curGroup);
+          // Buang baris yang benar-benar kosong (tanpa teks)
+          const discussionRowsTokens = discussionGroups.filter(g =>
+            g.some(t => t.type === 'text' && (t.text || '').trim() !== '')
+          );
+
+          if (discussionRowsTokens.length > 0) {
+            const discussionBody = discussionRowsTokens.map((g, i) => [String(i + 1), '']);
+            doc.autoTable({
+              startY: yPos,
+              head: [['No', 'Poin Pembahasan']],
+              body: discussionBody,
+              theme: 'grid',
+              styles: { fontSize: 9, font: 'helvetica', valign: 'top' },
+              headStyles: { fillColor: [26, 43, 76], textColor: [255, 255, 255] },
+              alternateRowStyles: { fillColor: [248, 250, 252] },
+              columnStyles: { 0: { cellWidth: 12, halign: 'center' } },
+              didParseCell: function(data) {
+                if (data.section === 'body' && data.column.index === 1) {
+                  const tokens = discussionRowsTokens[data.row.index] || [];
+                  try {
+                    const innerWidth = data.cell.width - data.cell.padding('left') - data.cell.padding('right');
+                    const lines = pdfWrapRichTokens(doc, tokens, innerWidth, 9);
+                    data.cell._richLines = lines;
+                    data.cell.text = [];
+                    const lineH = 3.8;
+                    const needed = (lines.length * lineH) + data.cell.padding('top') + data.cell.padding('bottom') + 1;
+                    if (needed > data.cell.styles.minCellHeight) data.cell.styles.minCellHeight = needed;
+                  } catch (e) {
+                    // Fallback teks polos agar cetak tetap jalan bila parsing format gagal
+                    const plain = tokens.map(t => t.text || '').join('');
+                    data.cell.text = [plain || '-'];
+                  }
+                }
+              },
+              didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index === 1 && data.cell._richLines) {
+                  try {
+                    pdfDrawRichLines(doc, data.cell._richLines, data.cell.x + data.cell.padding('left'), data.cell.y + data.cell.padding('top') + 3, 3.8, 9);
+                    pdfResetFont(doc);
+                  } catch (e) { /* abaikan; fallback teks sudah ditangani di didParseCell */ }
+                }
+              }
+            });
+            yPos = doc.lastAutoTable.finalY + 10;
+          } else {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(10);
+            doc.text("Tidak ada poin pembahasan yang dicatat.", 14, yPos + 5);
+            yPos += 15;
+          }
+          pdfResetFont(doc);
 
           // TABLE 1: ACTION ITEMS
           yPos = pdfEnsureSpace(yPos, 20);
@@ -5267,23 +5612,37 @@
                   head: [['Tugas / Deskripsi', 'PIC', 'Status', 'Prog (%)', 'Deadline', 'Catatan']],
                   body: tableTasks,
                   theme: 'grid',
-                  styles: { fontSize: 9, font: 'helvetica' },
+                  styles: { fontSize: 9, font: 'helvetica', valign: 'top', overflow: 'linebreak' },
                   headStyles: { fillColor: [26, 43, 76], textColor: [255, 255, 255] }, 
                   alternateRowStyles: { fillColor: [248, 250, 252] },
+                  // Jangan pecah satu baris ke dua halaman: bila tak muat, seluruh baris pindah ke halaman berikutnya.
+                  // Ini mencegah teks kolom Catatan terpotong/berulang saat rich text digambar manual.
+                  rowPageBreak: 'avoid',
+                  columnStyles: { 5: { cellWidth: 42 } },
                   didParseCell: function(data) {
                     if (data.section === 'body' && data.column.index === 5) {
                       const rawHtml = tableTasksNotesHtml[data.row.index] || '';
                       try {
                         const tokens = pdfTokensFromRichHtml(rawHtml);
-                        const innerWidth = data.cell.width - data.cell.padding('left') - data.cell.padding('right');
+                        // Lebar dalam sel dihitung dari cellWidth tetap (42) dikurangi padding kiri-kanan,
+                        // sehingga wrapping konsisten dengan lebar sel yang akan dirender.
+                        const padL = data.cell.padding('left');
+                        const padR = data.cell.padding('right');
+                        const padT = data.cell.padding('top');
+                        const padB = data.cell.padding('bottom');
+                        const innerWidth = 42 - padL - padR;
+                        const lineH = 3.8;
                         const lines = pdfWrapRichTokens(doc, tokens, innerWidth, 9);
                         data.cell._richLines = lines;
+                        data.cell._lineH = lineH;
                         data.cell.text = [];
-                        const lineH = 3.8;
-                        const needed = (lines.length * lineH) + data.cell.padding('top') + data.cell.padding('bottom') + 1;
-                        if (needed > data.cell.styles.minCellHeight) data.cell.styles.minCellHeight = needed;
+                        // Tinggi = jumlah baris * tinggi baris + padding atas/bawah + sedikit ruang agar
+                        // baris terakhir tidak menyentuh/melewati garis bawah sel.
+                        const needed = (lines.length * lineH) + padT + padB + 2;
+                        if (needed > (data.cell.styles.minCellHeight || 0)) data.cell.styles.minCellHeight = needed;
                       } catch (e) {
-                        // Fallback aman: tampilkan teks polos jika parsing format gagal, agar cetak tetap jalan normal
+                        // Fallback aman: teks polos, biarkan autoTable menangani wrapping & tinggi secara native
+                        data.cell._richLines = null;
                         data.cell.text = [htmlToPlainText(rawHtml) || '-'];
                       }
                     }
@@ -5291,9 +5650,30 @@
                   didDrawCell: function(data) {
                     if (data.section === 'body' && data.column.index === 5 && data.cell._richLines) {
                       try {
-                        pdfDrawRichLines(doc, data.cell._richLines, data.cell.x + data.cell.padding('left'), data.cell.y + data.cell.padding('top') + 3, 3.8, 9);
+                        const padL = data.cell.padding('left');
+                        const padT = data.cell.padding('top');
+                        const lineH = data.cell._lineH || 3.8;
+                        // Clip ke area sel agar teks tidak pernah meluber keluar kolom, apa pun kondisinya.
+                        doc.saveGraphicsState();
+                        if (doc.rect && doc.clip) {
+                          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
+                          doc.clip();
+                          if (doc.discardPath) doc.discardPath();
+                        }
+                        pdfDrawRichLines(
+                          doc,
+                          data.cell._richLines,
+                          data.cell.x + padL,
+                          data.cell.y + padT + 3,
+                          lineH,
+                          9
+                        );
+                        doc.restoreGraphicsState();
                         pdfResetFont(doc);
-                      } catch (e) { /* abaikan; teks fallback sudah ditangani di didParseCell */ }
+                      } catch (e) {
+                        try { doc.restoreGraphicsState(); } catch (_) {}
+                        /* abaikan; fallback teks sudah ditangani di didParseCell bila parsing gagal */
+                      }
                     }
                   }
               });
@@ -6710,6 +7090,23 @@
       const meetingDoc = await db.collection('meetings').doc(currentMeetingId).get();
       if (!meetingDoc.exists) return;
       const meetingData = meetingDoc.data();
+
+      // ROOT FIX: Tim yang ditugaskan disimpan pada field 'assignedTeamIds' dan sudah
+      // dirender dengan benar oleh renderAssignedTeams(). Engine lama ini membaca field
+      // lain ('members'/'participants') sehingga keliru menampilkan "Belum ada tim..."
+      // dan bahkan menyembunyikan kartu tim yang benar. Bila rapat SUDAH punya
+      // assignedTeamIds, engine ini tidak boleh ikut campur sama sekali.
+      if (Array.isArray(meetingData.assignedTeamIds) && meetingData.assignedTeamIds.length > 0) {
+        // Pastikan tidak ada sisa suntikan/penyembunyian dari eksekusi sebelumnya
+        const stale = document.getElementById('notula-x-injected-team-list');
+        if (stale) stale.remove();
+        // Kembalikan tampilan elemen yang mungkin sempat disembunyikan engine ini
+        document.querySelectorAll('[data-notula-hidden-by-v5="1"]').forEach(el => {
+          el.style.display = '';
+          el.removeAttribute('data-notula-hidden-by-v5');
+        });
+        return;
+      }
       
       const workspaceId = meetingData.workspaceId;
       if (!workspaceId) return;
@@ -6769,7 +7166,8 @@
           if (child !== headingEl && child.id !== 'notula-x-injected-team-list') {
             const childText = (child.textContent || '').toLowerCase();
             if (childText.includes('belum ada') || childText.includes('tidak ada') || child.tagName === 'UL' || child.tagName === 'DIV') {
-              child.style.display = 'none'; 
+              child.style.display = 'none';
+              child.setAttribute('data-notula-hidden-by-v5', '1');
             }
           }
         });
