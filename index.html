@@ -715,6 +715,23 @@
           </div>
         </div>
       </div>
+      <div class="form-group" id="meetingSourceGroup">
+        <label>Sumber Data Rapat</label>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+            <input type="radio" name="meetingSource" value="scratch" checked style="width: auto; margin: 0;"> Rapat Baru (from scratch / tanpa hubungan)
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+            <input type="radio" name="meetingSource" value="related" style="width: auto; margin: 0;"> Terkait dengan rapat yang ada
+          </label>
+        </div>
+        <div id="meetingRelatedSelectWrap" style="display: none; margin-top: 8px;">
+          <select id="meetingRelatedSelect">
+            <option value="">-- Pilih Rapat Terkait --</option>
+          </select>
+          <p style="font-size: 0.8rem; color: var(--color-text-light); margin-top: 4px;"><i class="fas fa-info-circle"></i> Data seksi, tugas, dan pemasukan akan disalin dari rapat yang dipilih. Rapat baru akan tercatat sebagai lanjutan dari rapat tersebut.</p>
+        </div>
+      </div>
       <div class="form-group">
         <label>Informasi tambahan (opsional)</label>
         <textarea id="meetingInfoInput" rows="2" placeholder="anggaran, tempat, dll"></textarea>
@@ -4147,8 +4164,36 @@
         document.getElementById('meetingInfoInput').value = '';
         document.getElementById('meetingAgendaInput').value = '';
         document.getElementById('meetingWorkspaceSelect').value = currentWorkspaceId || 'private';
+        // Reset & tampilkan pilihan sumber data rapat (scratch vs related)
+        const srcGroup = document.getElementById('meetingSourceGroup');
+        if (srcGroup) srcGroup.style.display = '';
+        const scratchRadio = document.querySelector('input[name="meetingSource"][value="scratch"]');
+        if (scratchRadio) scratchRadio.checked = true;
+        document.getElementById('meetingRelatedSelectWrap').style.display = 'none';
+        document.getElementById('meetingRelatedSelect').value = '';
+        populateRelatedMeetingSelect(document.getElementById('meetingWorkspaceSelect').value);
         delete document.getElementById('saveMeetingModal').dataset.editId;
         meetingModal.classList.add('active');
+      });
+
+      // Isi dropdown rapat terkait berdasarkan workspace terpilih
+      function populateRelatedMeetingSelect(workspaceSelectVal) {
+        const sel = document.getElementById('meetingRelatedSelect');
+        if (!sel) return;
+        const wsId = (workspaceSelectVal === 'private') ? null : workspaceSelectVal;
+        const list = meetings
+          .filter(m => !m.archived && ((m.workspaceId || null) === wsId))
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        sel.innerHTML = '<option value="">-- Pilih Rapat Terkait --</option>' +
+          list.map(m => `<option value="${m.id}">${(m.title || '(tanpa judul)').replace(/</g, '&lt;')} — ${m.date || ''}</option>`).join('');
+      }
+
+      // Toggle tampilan dropdown saat pilihan sumber berubah
+      document.querySelectorAll('input[name="meetingSource"]').forEach(r => {
+        r.addEventListener('change', function() {
+          document.getElementById('meetingRelatedSelectWrap').style.display =
+            (this.value === 'related') ? '' : 'none';
+        });
       });
 
       document.getElementById('editMeetingBtn').addEventListener('click', () => {
@@ -4168,6 +4213,10 @@
         modalSelectedTeamIds = m.assignedTeamIds ? [...m.assignedTeamIds] : [];
         updateMeetingTeamSelect();
         renderSelectedTeamChips();
+
+        // Mode edit: sembunyikan pilihan sumber data rapat
+        const srcGroupEdit = document.getElementById('meetingSourceGroup');
+        if (srcGroupEdit) srcGroupEdit.style.display = 'none';
 
         document.getElementById('saveMeetingModal').dataset.editId = m.id;
         meetingModal.classList.add('active');
@@ -4193,6 +4242,9 @@
           } else {
             document.getElementById('meetingDateInput').value = new Date().toISOString().split('T')[0];
           }
+          // Perbarui daftar rapat terkait sesuai workspace baru
+          populateRelatedMeetingSelect(this.value);
+          document.getElementById('meetingRelatedSelect').value = '';
         }
       });
 
@@ -4228,14 +4280,21 @@
 
         let sections = [];
         let incomeItems = []; // Menyalin data pemasukan juga
+        let relatedToId = null;
 
         if (!editId) {
+          // Baca pilihan sumber data: 'scratch' (kosong) atau 'related' (salin dari rapat terpilih)
+          const sourceMode = (document.querySelector('input[name="meetingSource"]:checked') || {}).value || 'scratch';
           let lastMeeting = null;
-          if (workspaceId !== null) {
-            lastMeeting = getLastMeetingInWorkspace(workspaceId);
-          } else {
-            lastMeeting = getLastPrivateMeeting();
+
+          if (sourceMode === 'related') {
+            const relatedId = document.getElementById('meetingRelatedSelect').value;
+            if (!relatedId) return alert('Silakan pilih rapat terkait terlebih dahulu, atau pilih "Rapat Baru (from scratch)".');
+            lastMeeting = meetings.find(m => m.id === relatedId) || null;
+            if (!lastMeeting) return alert('Rapat terkait tidak ditemukan.');
+            relatedToId = lastMeeting.id;
           }
+          // sourceMode === 'scratch' -> lastMeeting tetap null, sections & incomeItems kosong
 
           if (lastMeeting) {
             if (lastMeeting.sections) {
@@ -4274,6 +4333,7 @@
         const meetingData = { 
           title, date, info, agenda, workspaceId, createdBy: currentUser.uid, 
           sections, incomeItems, 
+          relatedTo: relatedToId,
           assignedTeamIds: selectedTeamIds,
           teamAccessLog: selectedTeamIds.length > 0 ? [{
             teamIds: selectedTeamIds,
@@ -4289,6 +4349,7 @@
              meetingData.sections = existing.sections;
              meetingData.incomeItems = existing.incomeItems || [];
              meetingData.assignedTeamIds = selectedTeamIds;
+             meetingData.relatedTo = existing.relatedTo || null;
           }
         }
         
