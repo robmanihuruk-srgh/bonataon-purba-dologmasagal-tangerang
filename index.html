@@ -962,6 +962,23 @@
           <tbody></tbody>
       </table>
 
+      <div id="mom-signature-block" style="margin-top:32px; padding:16px; border:1px dashed var(--color-border); border-radius:10px; background: var(--color-bg-light);">
+          <label style="font-weight:600; color:var(--color-secondary); display:block; margin-bottom:4px;"><i class="fas fa-signature"></i> Tanda Tangan Notulis (Digital)</label>
+          <p style="font-size:0.82rem; color:var(--color-text-light); margin:0 0 10px 0;"><i class="fas fa-info-circle"></i> Unggah gambar tanda tangan (PNG/JPG, latar transparan disarankan) dan ketik nama notulis. Keduanya akan tercetak pada blok "Dibuat oleh" di PDF.</p>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+              <input type="file" id="mom-signature-file" accept="image/png,image/jpeg,image/jpg" style="max-width:280px;">
+              <button type="button" class="btn-secondary" id="mom-signature-clear" style="padding:6px 12px; display:none;"><i class="fas fa-trash-alt"></i> Hapus Tanda Tangan</button>
+          </div>
+          <div class="form-group" style="margin-top:12px; margin-bottom:0;">
+              <label style="font-weight:600;">Nama Notulis</label>
+              <input type="text" id="mom-signature-notulis" placeholder="Ketik nama notulis / pencatat..." style="max-width:340px;">
+          </div>
+          <div id="mom-signature-preview-wrap" style="display:none; margin-top:12px;">
+              <span style="font-size:0.8rem; color:var(--color-text-light);">Pratinjau:</span><br>
+              <img id="mom-signature-preview" alt="Pratinjau tanda tangan" style="max-height:90px; max-width:260px; margin-top:6px; border:1px solid var(--color-border); border-radius:6px; background:#fff; padding:4px;">
+          </div>
+      </div>
+
       <div class="modal-actions" style="margin-top: 40px; border-top: 1px solid var(--color-border); padding-top: 24px;">
           <button class="btn-secondary" id="cancelMomBtn">Batal</button>
           <button class="btn-primary" id="saveMomBtn" style="background: var(--color-secondary);"><i class="fas fa-save"></i> Simpan Draft</button>
@@ -1860,6 +1877,18 @@
       async function seedDefaultData() {
         if (!currentUser) return;
         try {
+          // GUARD SEKALI-JALAN: seeding data default hanya boleh dilakukan satu kali per project.
+          // Tanpa ini, seedDefaultData berjalan setiap admin login/refresh dan dapat membuat ulang
+          // rapat yang sudah diarsipkan/dihapus, sehingga rapat "kembali lagi" setelah refresh.
+          try {
+            const seedFlag = await db.collection('app_config').doc('seed').get();
+            if (seedFlag.exists && seedFlag.data().defaultSeeded === true) {
+              return; // sudah pernah di-seed, jangan ulangi
+            }
+          } catch (flagErr) {
+            console.log('Gagal membaca penanda seed:', flagErr.message);
+          }
+
           let workspaceId = null;
           const workspaceQuery = await db.collection('workspaces').where('name', '==', 'Rapat Pesparawi Distrik VII').get();
           if (!workspaceQuery.empty) {
@@ -1910,6 +1939,17 @@
               await db.collection('meetings').add(meetingData);
             }
           }
+
+          // Tandai bahwa seeding default sudah selesai agar tidak diulang pada login/refresh berikutnya.
+          try {
+            await db.collection('app_config').doc('seed').set({
+              defaultSeeded: true,
+              seededAt: new Date().toISOString(),
+              seededBy: currentUser?.email || currentUser?.uid || 'unknown'
+            }, { merge: true });
+          } catch (setFlagErr) {
+            console.log('Gagal menyetel penanda seed:', setFlagErr.message);
+          }
         } catch (error) {
           console.error('Gagal menambahkan data default:', error);
         }
@@ -1926,6 +1966,12 @@
               await db.collection('meetings').doc(m.id).delete();
             }
             await db.collection('workspaces').doc(doc.id).delete();
+          }
+          // Kosongkan penanda seed agar seedDefaultData boleh berjalan lagi saat reset manual ini.
+          try {
+            await db.collection('app_config').doc('seed').set({ defaultSeeded: false }, { merge: true });
+          } catch (clrErr) {
+            console.log('Gagal mengosongkan penanda seed:', clrErr.message);
           }
           await seedDefaultData();
           alert('Data default berhasil direset!');
@@ -3759,6 +3805,19 @@
             deletedAt: new Date().toISOString(),
             deletedBy: currentUser?.email || currentUser?.uid || 'unknown'
           });
+          // VERIFIKASI KE SERVER: pastikan penulisan benar-benar tersimpan (bukan hanya cache lokal).
+          // Ini menangkap kasus di mana Security Rules menolak update secara diam-diam sehingga
+          // rapat "kembali" setelah halaman di-refresh.
+          try {
+            const _check = await db.collection('meetings').doc(meetingId).get({ source: 'server' });
+            if (!_check.exists || !_check.data().deletedAt) {
+              alert('Peringatan: pengarsipan tidak tersimpan di server. Kemungkinan izin (Security Rules) menolak perubahan ini. Rapat dapat muncul kembali setelah refresh. Hubungi admin untuk memeriksa aturan Firestore.');
+              return;
+            }
+          } catch (verifyErr) {
+            alert('Rapat diarsipkan secara lokal, namun verifikasi ke server gagal: ' + verifyErr.message + '. Rapat mungkin muncul kembali setelah refresh jika izin menolak perubahan.');
+            return;
+          }
           if (window.addWorkspaceLog) window.addWorkspaceLog(`Mengarsipkan rapat: "${_delMeeting?.title || meetingId}"`);
           if (currentMeetingId === meetingId) currentMeetingId = null;
         } catch (error) {
@@ -4809,6 +4868,42 @@
         return uid;
       }
 
+      // ========== LOOKUP NAMA (displayName) BY UID ==========
+      const uidNameCache = new Map();
+      async function lookupNameByUid(uid) {
+        if (!uid) return '';
+        if (uidNameCache.has(uid)) return uidNameCache.get(uid);
+        // METHOD 1: Firestore users collection
+        try {
+          const userDoc = await db.collection('users').doc(uid).get();
+          if (userDoc.exists) {
+            const d = userDoc.data();
+            const nm = d.displayName || d.name || '';
+            if (nm) { uidNameCache.set(uid, nm); return nm; }
+          }
+        } catch (e) {
+          console.log('Firestore name lookup by UID failed:', e.message);
+        }
+        // METHOD 2: RTDB user_emails reverse lookup
+        try {
+          const snapshot = await rtdb.ref('user_emails').once('value');
+          const allUsers = snapshot.val();
+          if (allUsers) {
+            for (const safeEmail in allUsers) {
+              if (allUsers[safeEmail].uid === uid && allUsers[safeEmail].displayName) {
+                const nm = allUsers[safeEmail].displayName;
+                uidNameCache.set(uid, nm);
+                return nm;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('RTDB name lookup failed:', e.message);
+        }
+        uidNameCache.set(uid, '');
+        return '';
+      }
+
 
       function escapeHtml(text) { if (!text) return ''; const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
 
@@ -5307,6 +5402,81 @@
       })();
       MomAgenda.init();
 
+      // ========== MODUL TANDA TANGAN DIGITAL MoM ==========
+      const MomSignatureImage = (function () {
+        let dataUrl = null;      // base64 gambar tanda tangan
+        let editable = true;
+
+        const fileInput = () => document.getElementById('mom-signature-file');
+        const clearBtn = () => document.getElementById('mom-signature-clear');
+        const previewWrap = () => document.getElementById('mom-signature-preview-wrap');
+        const previewImg = () => document.getElementById('mom-signature-preview');
+        const notulisInput = () => document.getElementById('mom-signature-notulis');
+
+        function renderPreview() {
+          if (dataUrl) {
+            previewImg().src = dataUrl;
+            previewWrap().style.display = 'block';
+            if (editable) clearBtn().style.display = 'inline-block';
+          } else {
+            previewImg().removeAttribute('src');
+            previewWrap().style.display = 'none';
+            clearBtn().style.display = 'none';
+          }
+        }
+
+        function handleFile(file) {
+          if (!file) return;
+          if (!/^image\/(png|jpe?g)$/i.test(file.type)) {
+            alert('Format tidak didukung. Gunakan file PNG atau JPG.');
+            return;
+          }
+          if (file.size > 2 * 1024 * 1024) {
+            alert('Ukuran gambar terlalu besar (maksimal 2 MB). Silakan kompres terlebih dahulu.');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            dataUrl = e.target.result;
+            renderPreview();
+          };
+          reader.onerror = function () { alert('Gagal membaca file gambar.'); };
+          reader.readAsDataURL(file);
+        }
+
+        function load(savedDataUrl, savedNotulisName) {
+          dataUrl = savedDataUrl || null;
+          if (fileInput()) fileInput().value = '';
+          if (notulisInput()) notulisInput().value = savedNotulisName || '';
+          renderPreview();
+        }
+
+        function getData() { return dataUrl; }
+        function getNotulisName() { return notulisInput() ? notulisInput().value.trim() : ''; }
+
+        function setEditable(flag) {
+          editable = flag;
+          if (fileInput()) fileInput().style.display = flag ? 'inline-block' : 'none';
+          if (notulisInput()) notulisInput().readOnly = !flag;
+          renderPreview();
+        }
+
+        function init() {
+          if (fileInput()) fileInput().addEventListener('change', function () {
+            if (this.files && this.files[0]) handleFile(this.files[0]);
+          });
+          if (clearBtn()) clearBtn().addEventListener('click', function () {
+            if (!editable) return;
+            dataUrl = null;
+            if (fileInput()) fileInput().value = '';
+            renderPreview();
+          });
+        }
+
+        return { init, load, getData, getNotulisName, setEditable };
+      })();
+      MomSignatureImage.init();
+
       // ========== MOM NATIVE LOGIC ==========
       document.getElementById('btn-open-mom').addEventListener('click', () => {
           const meeting = meetings.find(m => m.id === currentMeetingId);
@@ -5323,11 +5493,13 @@
               document.getElementById('mom-attendees').value = meeting.mom.attendees || '';
               document.getElementById('mom-discussion').value = meeting.mom.discussion || '';
               MomAgenda.load(meeting.mom.agenda);
+              MomSignatureImage.load(meeting.mom.signatureImage, meeting.mom.notulisName);
           } else {
               document.getElementById('mom-location').value = '';
               document.getElementById('mom-attendees').value = '';
               document.getElementById('mom-discussion').value = '';
               MomAgenda.load(null);
+              MomSignatureImage.load(null, '');
           }
 
           // APLIKASIKAN ATURAN READ-ONLY BAGI PESERTA
@@ -5335,6 +5507,7 @@
           document.getElementById('mom-attendees').readOnly = !canEditMom;
           document.getElementById('mom-discussion').readOnly = !canEditMom;
           MomAgenda.setEditable(canEditMom);
+          MomSignatureImage.setEditable(canEditMom);
 
           if (canEditMom) {
               document.getElementById('saveMomBtn').style.display = 'inline-block';
@@ -5451,7 +5624,9 @@
               location: document.getElementById('mom-location').value,
               attendees: document.getElementById('mom-attendees').value,
               discussion: document.getElementById('mom-discussion').value,
-              agenda: MomAgenda.getData()
+              agenda: MomAgenda.getData(),
+              signatureImage: MomSignatureImage.getData() || null,
+              notulisName: MomSignatureImage.getNotulisName() || ''
           };
           try {
               await db.collection('meetings').doc(currentMeetingId).update({ mom: momData });
@@ -5847,12 +6022,46 @@
               yPos += 15;
           }
 
-          yPos = pdfEnsureSpace(yPos, 40);
-          
+          yPos = pdfEnsureSpace(yPos, 45);
+
+          // Ambil dari state modul agar gambar/nama yang baru diunggah/diketik ikut tercetak
+          // meski draft belum disimpan. Fallback ke data tersimpan bila modul kosong.
+          let sigImg = MomSignatureImage.getData();
+          if (!sigImg && meeting && meeting.mom && meeting.mom.signatureImage) {
+              sigImg = meeting.mom.signatureImage;
+          }
+          let notulisName = MomSignatureImage.getNotulisName();
+          if (!notulisName && meeting && meeting.mom && meeting.mom.notulisName) {
+              notulisName = meeting.mom.notulisName;
+          }
+
           doc.setFont("helvetica", "normal");
+          doc.setFontSize(11);
           doc.text("Dibuat oleh,", 150, yPos);
+
+          // Tempel gambar tanda tangan (jika ada) di antara "Dibuat oleh," dan garis
+          if (sigImg) {
+              try {
+                  let fmt = 'PNG';
+                  if (/^data:image\/jpe?g/i.test(sigImg)) fmt = 'JPEG';
+                  // area gambar: lebar maks 45mm, tinggi maks 20mm, ditempatkan di atas garis
+                  doc.addImage(sigImg, fmt, 145, yPos + 3, 45, 20, undefined, 'FAST');
+              } catch (e) {
+                  console.log('Gagal menempel tanda tangan pada PDF:', e.message);
+              }
+          }
+
+          // Garis tanda tangan
           doc.text("____________________", 145, yPos + 25);
-          doc.text("Notulis / Pencatat", 152, yPos + 30);
+          // Nama notulis (diisi manual) di atas peran
+          if (notulisName) {
+              doc.setFont("helvetica", "bold");
+              doc.text(notulisName, 152, yPos + 30);
+              doc.setFont("helvetica", "normal");
+              doc.text("Notulis / Pencatat", 152, yPos + 35);
+          } else {
+              doc.text("Notulis / Pencatat", 152, yPos + 30);
+          }
 
           doc.save(`MoM_${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
       });
