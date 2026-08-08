@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- BUILD:1780030127 --><!-- ARSIP:1 -->
+<!DOCTYPE html><!-- BUILD:1780030127 --><!-- ARSIP:1 --><!-- ABSKET:1 -->
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -397,6 +397,11 @@ input[type=range]{flex:1;accent-color:var(--accent);}
 .abs-summary{display:flex;gap:14px;padding:12px 16px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;flex-wrap:wrap;}
 .abs-sum-item{display:flex;align-items:center;gap:5px;}
 .abs-dot{width:8px;height:8px;border-radius:50%;}
+.abs-ket-input{width:100%;max-width:220px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 9px;font-family:var(--font);font-size:12px;color:var(--text);outline:none;transition:border-color .15s;margin-top:6px;}
+.abs-ket-input:focus{border-color:var(--accent);}
+.abs-ket-input::placeholder{color:var(--text3);}
+.abs-ket-wrap{margin-top:2px;}
+.abs-ket-view{font-size:11px;color:var(--text3);margin-top:4px;font-style:italic;}
 
 /* ═══ MULTI-RAPAT STYLES ═══ */
 /* WORKSPACE / TIM SELECTOR */
@@ -1612,8 +1617,11 @@ function startListeners() {
   unsubListeners.push(
     db.collection('absensi').onSnapshot(function(snap) {
       localAbsensi = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
-      // Re-render tab absensi jika sedang terbuka
-      if (currentRapatId) renderAbsensiTab(currentRapatId);
+      // Re-render tab absensi jika sedang terbuka — tapi jangan ganggu saat user sedang
+      // mengetik di input keterangan (agar fokus & ketikan tidak hilang).
+      var aktifEl = document.activeElement;
+      var sedangKetik = aktifEl && aktifEl.classList && aktifEl.classList.contains('abs-ket-input');
+      if (currentRapatId && !sedangKetik) renderAbsensiTab(currentRapatId);
       updateStats();
     }, function(e) {
       console.warn('[NOTULA] Absensi listener: ' + e.message);
@@ -4038,7 +4046,7 @@ function exportReportExcel(type) {
   if (type === 'absensi') {
     var absRows = [['No','Nama','Role','Rapat','Tanggal Rapat','Status','Keterangan']];
     localUsers.forEach(function(u, i) {
-      var userAbs = localAbsensi.filter(function(a){ return a.userId===u.uid; });
+      var userAbs = localAbsensi.filter(function(a){ return a.userId===u.uid && isRapatAktif(a.rapatId); });
       if (!userAbs.length) {
         absRows.push([i+1, u.nama||u.email, u.role||'—', '—', '—', 'belum diisi', '']);
       } else {
@@ -4158,7 +4166,7 @@ function exportReportExcel(type) {
     var absRowsL = [['No','Nama','Role','Rapat','Tanggal Rapat','Status','Keterangan']];
     var rIdx = 1;
     localUsers.forEach(function(u) {
-      var userAbsL = localAbsensi.filter(function(a){ return a.userId===u.uid; });
+      var userAbsL = localAbsensi.filter(function(a){ return a.userId===u.uid && isRapatAktif(a.rapatId); });
       if (!userAbsL.length) {
         absRowsL.push([rIdx++, u.nama||u.email, u.role||'—', '—', '—', 'belum diisi', '']);
       } else {
@@ -4247,6 +4255,15 @@ function renderAbsensiTab(rid) {
         + '<button class="abs-btn izin'  + (stat==='izin' ?' active':'') + '" onclick="setAbsensi(\'' + rid + '\',\'' + u.uid + '\',\'izin\')">Izin</button>'
         + '<button class="abs-btn alpa'  + (stat==='alpa' ?' active':'') + '" onclick="setAbsensi(\'' + rid + '\',\'' + u.uid + '\',\'alpa\')">Alpa</button>'
         + '</div>';
+      // Input keterangan hanya muncul untuk status Izin atau Alpa
+      if (stat === 'izin' || stat === 'alpa') {
+        var ketEsc = ket.replace(/"/g, '&quot;');
+        var ph = stat === 'izin' ? 'Alasan izin…' : 'Keterangan alpa…';
+        html += '<div class="abs-ket-wrap"><input type="text" class="abs-ket-input" '
+          + 'value="' + ketEsc + '" placeholder="' + ph + '" '
+          + 'onblur="saveAbsensiKeterangan(\'' + rid + '\',\'' + u.uid + '\',this.value)" '
+          + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}" /></div>';
+      }
     } else {
       if (!stat) {
         html += '<span style="font-size:12px;color:var(--text3);">Belum diisi</span>';
@@ -4254,6 +4271,7 @@ function renderAbsensiTab(rid) {
         var badgeColor = stat==='hadir' ? 'var(--green)' : stat==='izin' ? 'var(--yellow)' : 'var(--red)';
         var badgeLabel = stat==='hadir' ? 'Hadir' : stat==='izin' ? 'Izin' : 'Alpa';
         html += '<span style="font-size:12px;font-weight:600;color:' + badgeColor + ';">' + badgeLabel + '</span>';
+        if (ket) html += '<div class="abs-ket-view">' + ket + '</div>';
       }
     }
     html += '</td></tr>';
@@ -4275,11 +4293,17 @@ function renderAbsensiTab(rid) {
 function setAbsensi(rapatId, userId, status) {
   var user = localUsers.filter(function(u){ return u.uid === userId; })[0];
   var existing = localAbsensi.filter(function(a){ return a.rapatId===rapatId && a.userId===userId; })[0];
+  // Pertahankan keterangan bila pindah antar Izin/Alpa; kosongkan bila jadi Hadir.
+  var keteranganBaru = '';
+  if (existing && existing.keterangan && (status === 'izin' || status === 'alpa')) {
+    keteranganBaru = existing.keterangan;
+  }
   var data = {
     rapatId:    rapatId,
     userId:     userId,
     nama:       user ? (user.nama || user.email) : userId,
     status:     status,
+    keterangan: keteranganBaru,
     updatedBy:  currentUser.uid,
     updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -4303,6 +4327,22 @@ function setAbsensi(rapatId, userId, status) {
       else notify('Gagal: ' + e.message, 'error');
     });
   }
+}
+
+// Simpan keterangan absensi (alasan izin/alpa) tanpa mengubah status.
+function saveAbsensiKeterangan(rapatId, userId, keterangan) {
+  var existing = localAbsensi.filter(function(a){ return a.rapatId===rapatId && a.userId===userId; })[0];
+  if (!existing) return; // hanya berlaku bila status sudah dipilih
+  keterangan = (keterangan || '').trim();
+  if ((existing.keterangan || '') === keterangan) return; // tidak ada perubahan
+  db.collection('absensi').doc(existing.id).update({
+    keterangan: keterangan,
+    updatedBy: currentUser.uid,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function(e){
+    if (e.code==='permission-denied') { notify('⚠ Perlu update Firestore Rules untuk absensi.', 'error'); showAbsensiRulesHint(); }
+    else notify('Gagal menyimpan keterangan: ' + e.message, 'error');
+  });
 }
 
 function showAbsensiRulesHint() {
