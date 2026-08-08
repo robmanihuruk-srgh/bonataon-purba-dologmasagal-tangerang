@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- BUILD:1780030127 -->
+<!DOCTYPE html><!-- BUILD:1780030127 --><!-- ARSIP:1 -->
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -608,6 +608,7 @@ input[type=range]{flex:1;accent-color:var(--accent);}
     <div class="nav-item" id="ni-workspaces" onclick="showSection('workspaces',this)"><span class="nav-icon">🏷</span> Tim & Workspace <span class="nav-badge" id="nb-ws">0</span></div>
     <div class="nav-item" id="ni-anggota" onclick="showSection('anggota',this)"><span class="nav-icon">👤</span> Anggota Tim</div>
     <div class="nav-item" id="ni-report" onclick="showSection('report',this)"><span class="nav-icon">📊</span> Laporan & Export</div>
+    <div class="nav-item" id="ni-arsip" onclick="showSection('arsip',this)"><span class="nav-icon">🗄</span> Arsip Rapat</div>
   </nav>
   <div id="pwa-install-btn" style="display:flex;margin:0 12px 8px;background:rgba(91,138,240,0.12);border:1px solid rgba(91,138,240,0.3);border-radius:var(--radius-sm);padding:10px 14px;cursor:pointer;align-items:center;gap:10px;transition:background .2s;" onmouseenter="this.style.background='rgba(91,138,240,0.22)'" onmouseleave="this.style.background='rgba(91,138,240,0.12)'" onclick="installPWA()">
     <span style="font-size:20px;flex-shrink:0;">📲</span>
@@ -964,6 +965,19 @@ input[type=range]{flex:1;accent-color:var(--accent);}
       </div>
     </div>
 
+    <!-- ARSIP RAPAT -->
+    <div class="section" id="section-arsip">
+      <div class="section-header">
+        <div><div class="section-heading">Arsip Rapat</div><div class="section-sub">Rapat lama beserta seluruh data (progress, to do, kendala, absensi)</div></div>
+      </div>
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+          Rapat yang diarsipkan disembunyikan dari Daftar Rapat, Monitor Progress, To Do, Kendala, dan Laporan — tapi seluruh datanya tetap tersimpan lengkap di sini. Klik kartu untuk melihat rincian, atau pulihkan ke tampilan aktif.
+        </div>
+      </div>
+      <div class="meeting-list" id="arsip-list"></div>
+    </div>
+
   </div><!-- /content -->
 </main>
 
@@ -979,6 +993,14 @@ input[type=range]{flex:1;accent-color:var(--accent);}
 </nav>
 
 <!-- MODALS -->
+<div class="modal-overlay" id="modal-arsip">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header"><span class="modal-title" id="modal-arsip-title">Detail Arsip</span><button class="close-btn" onclick="closeModal('modal-arsip')">×</button></div>
+    <div class="modal-body" id="modal-arsip-body"></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-arsip')">Tutup</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-rapat">
   <div class="modal" style="max-width:680px;">
     <div class="modal-header"><span class="modal-title" id="mr-title">Rapat Baru</span><button class="close-btn" onclick="closeModal('modal-rapat')">×</button></div>
@@ -1679,6 +1701,8 @@ function renderAll() {
   renderWorkspaceSelector();
   updateBadges();
   updateDropdowns();
+  if (typeof renderArsipList === 'function') renderArsipList();
+  if (typeof populateReportFilters === 'function') populateReportFilters();
 }
 
 // ── STATS ──
@@ -1687,10 +1711,12 @@ function updateStats() {
   var filtRapat = currentWorkspaceId ? visRapat.filter(function(r){return r.workspaceId===currentWorkspaceId;}) : visRapat;
   document.getElementById('st-rapat').textContent     = filtRapat.length;
   document.getElementById('st-rapat-sub').textContent = filtRapat.length ? formatTanggal(filtRapat[0].tanggal) : '—';
-  var done = localTodo.filter(function(t) { return t.done; }).length;
+  var aktifTodo = localTodo.filter(function(t){ return isRapatAktif(t.rapatId); });
+  var aktifKendala = localKendala.filter(function(k){ return isRapatAktif(k.rapatId); });
+  var done = aktifTodo.filter(function(t) { return t.done; }).length;
   document.getElementById('st-done').textContent       = done;
-  document.getElementById('st-total-todo').textContent = localTodo.length;
-  document.getElementById('st-kendala').textContent    = localKendala.filter(function(k) { return k.status === 'aktif'; }).length;
+  document.getElementById('st-total-todo').textContent = aktifTodo.length;
+  document.getElementById('st-kendala').textContent    = aktifKendala.filter(function(k) { return k.status === 'aktif'; }).length;
   var pcts = SEKSI_LIST.map(function(s) { return (localProgress[s] && localProgress[s].pct) || 0; });
   var avg  = pcts.length ? Math.round(pcts.reduce(function(a, b) { return a + b; }, 0) / pcts.length) : 0;
   document.getElementById('st-avg').textContent = avg + '%';
@@ -1698,12 +1724,13 @@ function updateStats() {
   var hadirEl = document.getElementById('st-hadir');
   var hadirSubEl = document.getElementById('st-hadir-sub');
   if (hadirEl) {
-    var totalAbs = localAbsensi.length;
+    var aktifAbs = localAbsensi.filter(function(a){ return isRapatAktif(a.rapatId); });
+    var totalAbs = aktifAbs.length;
     if (!totalAbs) {
       hadirEl.textContent = '—';
       if (hadirSubEl) hadirSubEl.textContent = 'Belum ada data';
     } else {
-      var hadirCount = localAbsensi.filter(function(a){ return a.status === 'hadir'; }).length;
+      var hadirCount = aktifAbs.filter(function(a){ return a.status === 'hadir'; }).length;
       var pctHadir = Math.round(hadirCount / totalAbs * 100);
       hadirEl.textContent = pctHadir + '%';
       if (hadirSubEl) hadirSubEl.textContent = hadirCount + ' hadir dari ' + totalAbs + ' catatan';
@@ -1712,9 +1739,10 @@ function updateStats() {
 }
 
 function updateBadges() {
-  document.getElementById('nb-rapat').textContent   = localRapat.length;
-  document.getElementById('bnb-rapat').textContent  = localRapat.length;
-  var pending = localTodo.filter(function(t) { return !t.done; }).length;
+  var aktifRapatCount = localRapat.filter(function(r){ return !r.archived; }).length;
+  document.getElementById('nb-rapat').textContent   = aktifRapatCount;
+  document.getElementById('bnb-rapat').textContent  = aktifRapatCount;
+  var pending = localTodo.filter(function(t) { return !t.done && isRapatAktif(t.rapatId); }).length;
   document.getElementById('nb-todo').textContent    = pending;
   document.getElementById('bnb-todo').textContent   = pending;
 }
@@ -1723,10 +1751,11 @@ function updateBadges() {
 function renderDashboard() {
   // Recent rapat
   var rc = document.getElementById('db-rapat-list');
-  if (!localRapat.length) {
+  var dashRapat = localRapat.filter(function(r){ return !r.archived; });
+  if (!dashRapat.length) {
     rc.innerHTML = '<div class="empty"><div class="empty-text">Belum ada rapat</div></div>';
   } else {
-    rc.innerHTML = localRapat.slice(0, 4).map(function(r) {
+    rc.innerHTML = dashRapat.slice(0, 4).map(function(r) {
       return '<div class="upcoming-item" onclick="quickViewRapat(\'' + r.id + '\')">'
         + '<div class="u-dot" style="background:' + (r.status==='selesai'?'var(--green)':r.status==='berlangsung'?'var(--accent)':'var(--yellow)') + ';"></div>'
         + '<div style="flex:1;min-width:0;">'
@@ -1738,7 +1767,7 @@ function renderDashboard() {
   // Todo by seksi
   var tc = document.getElementById('db-todo-summary');
   var bySeksi = {};
-  localTodo.forEach(function(t) {
+  localTodo.filter(function(t){ return isRapatAktif(t.rapatId); }).forEach(function(t) {
     var k = t.seksi || 'Umum';
     if (!bySeksi[k]) bySeksi[k] = { done: 0, total: 0 };
     bySeksi[k].total++;
@@ -1757,26 +1786,39 @@ function renderDashboard() {
   }).join('') : '<div style="font-size:13px;color:var(--text3);">Belum ada tugas</div>';
   // Kendala aktif
   var kc = document.getElementById('db-kendala-list');
-  var aktif = localKendala.filter(function(k) { return k.status === 'aktif'; }).slice(0, 4);
+  var aktif = localKendala.filter(function(k) { return k.status === 'aktif' && isRapatAktif(k.rapatId); }).slice(0, 4);
   kc.innerHTML = aktif.map(function(k, i) {
     return '<div class="kendala-item"><div class="kendala-num">' + (i+1) + '</div><div class="kendala-text">' + k.desc + '</div></div>';
   }).join('') || '<div style="font-size:13px;color:var(--text3);padding:8px 0;">Tidak ada kendala aktif</div>';
 }
 
 // ── RAPAT LIST ──
+function canSeeRapat(r) {
+  if (!currentProfile) return false;
+  if (currentProfile.role === 'admin' || currentProfile.role === 'notulen') return true;
+  if (!r.akses || r.akses === 'publik') return true;
+  if (r.createdBy === currentUser.uid) return true;
+  if (r.anggotaIds && r.anggotaIds.indexOf(currentUser.uid) >= 0) return true;
+  return false;
+}
 function getRapatVisible() {
-  // Get rapat visible to current user
-  return localRapat.filter(function(r) {
-    if (!currentProfile) return false;
-    // Admin/notulen see all
-    if (currentProfile.role === 'admin' || currentProfile.role === 'notulen') return true;
-    // Public rapat: everyone sees
-    if (!r.akses || r.akses === 'publik') return true;
-    // Private rapat: only creator or invitees
-    if (r.createdBy === currentUser.uid) return true;
-    if (r.anggotaIds && r.anggotaIds.indexOf(currentUser.uid) >= 0) return true;
-    return false;
-  });
+  // Rapat aktif (belum diarsipkan) yang boleh dilihat user
+  return localRapat.filter(function(r) { return !r.archived && canSeeRapat(r); });
+}
+function getRapatArsip() {
+  // Rapat yang sudah diarsipkan & boleh dilihat user
+  return localRapat.filter(function(r) { return r.archived && canSeeRapat(r); });
+}
+// Set id rapat aktif (non-arsip) — dipakai untuk memfilter todo/kendala/absensi global & laporan
+function rapatAktifIdSet() {
+  var s = {};
+  localRapat.forEach(function(r) { if (!r.archived) s[r.id] = true; });
+  return s;
+}
+function isRapatAktif(rapatId) {
+  if (!rapatId) return true; // data tanpa rapatId (legacy) dianggap aktif
+  var r = localRapat.filter(function(x){ return x.id === rapatId; })[0];
+  return !r || !r.archived;
 }
 
 function renderRapatList() {
@@ -1810,6 +1852,7 @@ function renderRapatList() {
     var canDelThis  = isRapatCreator || currentProfile.role === 'admin';
     var editBtn = canEditThis
       ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editRapat(\'' + r.id + '\')">✏</button>'
+      + (canDelThis ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();archiveRapat(\'' + r.id + '\')" title="Arsipkan rapat">🗄</button>' : '')
       + (canDelThis ? '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRapat(\'' + r.id + '\')">✕</button>' : '')
       : '';
 
@@ -1875,6 +1918,7 @@ function filterByWorkspace(wsId) {
   renderGlobalTodo();
   renderKendalaGlobal();
   updateStats();
+  if (typeof renderArsipList === 'function') renderArsipList();
 }
 
 function quickViewRapat(id) {
@@ -2106,9 +2150,11 @@ function renderProgressGlobal() {
 function renderGlobalTodo() {
   var cont = document.getElementById('global-todo-list');
   if (!cont) return;
-  var list = todoFilter === 'done' ? localTodo.filter(function(t){return t.done;})
-           : todoFilter === 'pending' ? localTodo.filter(function(t){return !t.done;})
-           : localTodo;
+  var aktifSet = rapatAktifIdSet();
+  var baseTodo = localTodo.filter(function(t){ return isRapatAktif(t.rapatId); });
+  var list = todoFilter === 'done' ? baseTodo.filter(function(t){return t.done;})
+           : todoFilter === 'pending' ? baseTodo.filter(function(t){return !t.done;})
+           : baseTodo;
   if (!list.length) { cont.innerHTML = '<div class="empty"><div class="empty-icon">✓</div><div class="empty-text">Tidak ada tugas</div></div>'; return; }
   var bySeksi = {};
   list.forEach(function(t) { var k=t.seksi||'Umum'; if(!bySeksi[k]) bySeksi[k]=[]; bySeksi[k].push(t); });
@@ -2149,10 +2195,11 @@ function filterTodo(f, el) {
 function renderKendalaGlobal() {
   var cont = document.getElementById('kendala-global-list');
   if (!cont) return;
-  if (!localKendala.length) { cont.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Tidak ada kendala</div></div>'; return; }
+  var baseKendala = localKendala.filter(function(k){ return isRapatAktif(k.rapatId); });
+  if (!baseKendala.length) { cont.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Tidak ada kendala</div></div>'; return; }
   var html = '';
-  var aktif  = localKendala.filter(function(k){return k.status==='aktif';});
-  var selesai = localKendala.filter(function(k){return k.status==='selesai';});
+  var aktif  = baseKendala.filter(function(k){return k.status==='aktif';});
+  var selesai = baseKendala.filter(function(k){return k.status==='selesai';});
   if (aktif.length) {
     html += '<div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Aktif (' + aktif.length + ')</div>';
     aktif.forEach(function(k,i) {
@@ -2336,12 +2383,14 @@ function showSection(id, el) {
   var titles = {
     dashboard:'Dashboard', rapat:'Daftar Rapat', progress:'Monitor Progress',
     todo:'To Do List', kendala:'Kendala', users:'Kelola Pengguna',
-    anggota:'Anggota Tim', report:'Laporan & Export', workspaces:'Tim & Workspace'
+    anggota:'Anggota Tim', report:'Laporan & Export', workspaces:'Tim & Workspace',
+    arsip:'Arsip Rapat'
   };
   document.getElementById('topbar-title').textContent = titles[id] || id;
   document.querySelectorAll('.bnav-item').forEach(function(b) { b.classList.remove('active'); });
   var bn = document.getElementById('bn-' + id);
   if (bn) bn.classList.add('active');
+  if (id === 'arsip' && typeof renderArsipList === 'function') renderArsipList();
   closeSidebar();
 }
 
@@ -2817,7 +2866,7 @@ function updateDropdowns() {
   ['mt-rapat','mk-rapat'].forEach(function(id) {
     var el = document.getElementById(id); if (!el) return;
     while (el.options.length > 1) el.remove(1);
-    localRapat.forEach(function(r) {
+    localRapat.filter(function(r){ return !r.archived; }).forEach(function(r) {
       var o = document.createElement('option');
       o.value = r.id;
       o.textContent = formatTanggal(r.tanggal) + ' — ' + r.nama.substring(0,28) + '...';
@@ -2837,6 +2886,7 @@ function globalSearch(q) {
   if (!q) { renderRapatList(); return; }
   var cont = document.getElementById('rapat-list');
   var matched = localRapat.filter(function(r) {
+    if (r.archived) return false;
     return r.nama.toLowerCase().indexOf(q) >= 0
       || (r.catatan||'').toLowerCase().indexOf(q) >= 0
       || (r.pimpinan||'').toLowerCase().indexOf(q) >= 0
@@ -2989,6 +3039,158 @@ function deleteRapat(id) {
     notify('Rapat dihapus', 'success');
     deleteLampiranChunks(lampIdsToDelete).catch(function(){});
   }).catch(function(e) { notify('Gagal: ' + e.message, 'error'); });
+}
+
+// ── ARSIP RAPAT ──
+// Mengarsipkan rapat: menyimpan snapshot progress per-seksi ke dokumen rapat,
+// menandai archived=true. Data todo/kendala/absensi tetap tersimpan (terhubung via rapatId)
+// tapi otomatis tersembunyi dari tampilan aktif & laporan.
+function archiveRapat(id) {
+  var r = localRapat.filter(function(x){ return x.id === id; })[0];
+  if (!r) { notify('Data tidak ditemukan', 'error'); return; }
+  var isCreator = r.createdBy === currentUser.uid;
+  if (!isCreator && !can('delete_rapat')) { notify('Hanya pembuat rapat atau admin yang dapat mengarsipkan', 'error'); return; }
+  var resetProgress = confirm(
+    'Arsipkan rapat "' + (r.nama||'') + '"?\n\n' +
+    'Seluruh data rapat ini (monitor progress, to do list, kendala, absensi, laporan) akan dipindahkan ke Arsip dan tidak lagi tampil di tampilan aktif.\n\n' +
+    'Tekan OK untuk MENGARSIPKAN + MERESET monitor progress ke nol (rapat berikutnya serba baru).\n' +
+    'Tekan Cancel untuk membatalkan.'
+  );
+  if (!resetProgress) return;
+
+  // Snapshot progress global per-seksi saat ini, simpan ke dokumen rapat
+  var snapshot = {};
+  SEKSI_LIST.forEach(function(s) {
+    var p = localProgress[s] || { pct:0, status:'rencana', catatan:'' };
+    snapshot[s] = { pct: p.pct||0, status: p.status||'rencana', catatan: p.catatan||'' };
+  });
+
+  var batch = db.batch();
+  batch.update(db.collection('rapat').doc(id), {
+    archived: true,
+    archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    archivedBy: currentUser.uid,
+    progressSnapshot: snapshot
+  });
+  // Reset progress global agar rapat baru mulai dari nol
+  SEKSI_LIST.forEach(function(s) {
+    batch.set(db.collection('progress').doc(s), {
+      pct: 0, status: 'rencana', catatan: '',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser.uid
+    });
+  });
+
+  batch.commit().then(function() {
+    if (currentRapatId === id) { currentRapatId = null; document.getElementById('detail-panel').style.display = 'none'; }
+    notify('Rapat diarsipkan. Monitor progress direset — siap untuk rapat baru.', 'success');
+    if (typeof logAktivitas === 'function') logAktivitas('archive_rapat', 'Mengarsipkan rapat: ' + (r.nama||''), r.nama);
+  }).catch(function(e) {
+    if (e.code === 'permission-denied') { notify('⚠ Perlu update Firestore Rules untuk field arsip.', 'error'); if (typeof showFirestoreRulesHint==='function') showFirestoreRulesHint(); }
+    else notify('Gagal mengarsipkan: ' + e.message, 'error');
+  });
+}
+
+// Mengembalikan rapat dari arsip ke tampilan aktif (tanpa mengubah progress global).
+function unarchiveRapat(id) {
+  var r = localRapat.filter(function(x){ return x.id === id; })[0];
+  if (!r) { notify('Data tidak ditemukan', 'error'); return; }
+  var isCreator = r.createdBy === currentUser.uid;
+  if (!isCreator && !can('delete_rapat')) { notify('Hanya pembuat rapat atau admin yang dapat memulihkan', 'error'); return; }
+  if (!confirm('Pulihkan rapat "' + (r.nama||'') + '" dari arsip ke tampilan aktif?')) return;
+  db.collection('rapat').doc(id).update({
+    archived: false,
+    unarchivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    unarchivedBy: currentUser.uid
+  }).then(function() {
+    notify('Rapat dipulihkan ke tampilan aktif', 'success');
+    if (typeof logAktivitas === 'function') logAktivitas('unarchive_rapat', 'Memulihkan rapat dari arsip: ' + (r.nama||''), r.nama);
+  }).catch(function(e) { notify('Gagal memulihkan: ' + e.message, 'error'); });
+}
+
+// Render daftar rapat yang diarsipkan (di section Arsip)
+function renderArsipList() {
+  var cont = document.getElementById('arsip-list');
+  if (!cont) return;
+  var list = getRapatArsip();
+  if (currentWorkspaceId) list = list.filter(function(r){ return r.workspaceId === currentWorkspaceId; });
+  list.sort(function(a,b){
+    var ta = a.archivedAt && a.archivedAt.seconds ? a.archivedAt.seconds : 0;
+    var tb = b.archivedAt && b.archivedAt.seconds ? b.archivedAt.seconds : 0;
+    return tb - ta;
+  });
+  if (!list.length) {
+    cont.innerHTML = '<div class="empty"><div class="empty-icon">🗄</div><div class="empty-text">Belum ada rapat yang diarsipkan</div></div>';
+    return;
+  }
+  cont.innerHTML = list.map(function(r) {
+    var todos   = localTodo.filter(function(t){ return t.rapatId === r.id; });
+    var total   = todos.length;
+    var done    = todos.filter(function(t){ return t.done; }).length;
+    var pct     = total ? Math.round(done/total*100) : 0;
+    var agCount = localAgenda.filter(function(a){ return a.rapatId === r.id; }).length;
+    var kdCount = localKendala.filter(function(k){ return k.rapatId === r.id; }).length;
+    var isCreator = r.createdBy === currentUser.uid;
+    var canManage = isCreator || currentProfile.role === 'admin';
+    var actBtns = canManage
+      ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();unarchiveRapat(\'' + r.id + '\')" title="Pulihkan ke aktif">↩ Pulihkan</button>'
+        + '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRapat(\'' + r.id + '\')" title="Hapus permanen">✕</button>'
+      : '';
+    return '<div class="meeting-card" style="opacity:.92;" onclick="viewArsipRapat(\'' + r.id + '\')">'
+      + '<div class="meeting-date-block" style="filter:grayscale(.3);"><div class="meeting-day">' + getDay(r.tanggal) + '</div><div class="meeting-month">' + getMonth(r.tanggal) + '</div></div>'
+      + '<div class="meeting-info">'
+      + '<div class="meeting-title">🗄 ' + r.nama + '</div>'
+      + '<div class="meeting-meta"><span>📅 ' + formatTanggal(r.tanggal) + '</span><span>📋 ' + agCount + ' agenda</span><span>✓ ' + done + '/' + total + ' to do</span><span>⚠ ' + kdCount + ' kendala</span></div>'
+      + '<div class="meeting-tags"><span class="tag ' + tagClass(r.status) + '">' + statusLabel(r.status) + '</span>'
+      + '<span class="tag" style="background:var(--bg3);color:var(--text2);">Diarsipkan</span></div>'
+      + '</div>'
+      + '<div class="meeting-actions">'
+      + '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + pct + '%;background:' + pctColor(pct) + ';"></div></div>'
+      + (actBtns ? '<div style="display:flex;gap:6px;margin-top:6px;">' + actBtns + '</div>' : '')
+      + '</div></div>';
+  }).join('');
+}
+
+// Lihat detail rapat arsip (read-only ringkas) — menampilkan snapshot progress yang tersimpan
+function viewArsipRapat(id) {
+  var r = localRapat.filter(function(x){ return x.id === id; })[0];
+  if (!r) return;
+  var snap = r.progressSnapshot || {};
+  var todos = localTodo.filter(function(t){ return t.rapatId === id; });
+  var kendala = localKendala.filter(function(k){ return k.rapatId === id; });
+  var absensi = (typeof localAbsensi !== 'undefined') ? localAbsensi.filter(function(a){ return a.rapatId === id; }) : [];
+
+  var progHtml = SEKSI_LIST.map(function(s){
+    var p = snap[s] || { pct:0, status:'rencana', catatan:'' };
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="font-size:12.5px;">' + s + '</span>'
+      + '<span style="font-size:12px;color:' + pctColor(p.pct||0) + ';font-weight:700;">' + (p.pct||0) + '% · ' + (p.status||'—') + '</span></div>';
+  }).join('');
+
+  var todoHtml = todos.length ? todos.map(function(t){
+    return '<div style="padding:5px 0;font-size:12.5px;color:var(--text2);">' + (t.done?'✅':'⬜') + ' ' + t.tugas + (t.seksi?' <span style="color:var(--text3);">('+t.seksi+')</span>':'') + '</div>';
+  }).join('') : '<div style="font-size:12.5px;color:var(--text3);">Tidak ada to do.</div>';
+
+  var kendalaHtml = kendala.length ? kendala.map(function(k){
+    return '<div style="padding:5px 0;font-size:12.5px;color:var(--text2);">' + (k.status==='selesai'?'✅':'⚠') + ' ' + (k.desc||'') + '</div>';
+  }).join('') : '<div style="font-size:12.5px;color:var(--text3);">Tidak ada kendala.</div>';
+
+  var absHtml = absensi.length
+    ? '<div style="font-size:12.5px;color:var(--text2);">' + absensi.filter(function(a){return a.status==='hadir';}).length + ' hadir dari ' + absensi.length + ' catatan.</div>'
+    : '<div style="font-size:12.5px;color:var(--text3);">Tidak ada data absensi.</div>';
+
+  var body = document.getElementById('modal-arsip-body');
+  if (body) {
+    body.innerHTML =
+      '<div style="margin-bottom:6px;font-size:13px;color:var(--text2);">📅 ' + formatTanggal(r.tanggal) + ' · ⏱ ' + (r.waktu||'—') + ' · 📍 ' + (r.lokasi||'—') + '</div>'
+      + (r.pimpinan ? '<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;">Pimpinan: ' + r.pimpinan + (r.notulen?' · Notulen: '+r.notulen:'') + '</div>' : '')
+      + '<div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Monitor Progress (snapshot)</div>' + progHtml
+      + '<div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">To Do List</div>' + todoHtml
+      + '<div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Kendala</div>' + kendalaHtml
+      + '<div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Absensi</div>' + absHtml;
+    document.getElementById('modal-arsip-title').textContent = '🗄 ' + r.nama;
+    document.getElementById('modal-arsip').classList.add('open');
+  }
 }
 
 // Pecah string base64 menjadi beberapa potongan
@@ -3433,7 +3635,7 @@ function populateReportFilters() {
     if (!rapatSel) return;
     var prev = rapatSel.value;
     while (rapatSel.options.length > 1) rapatSel.remove(1);
-    localRapat.forEach(function(r){
+    localRapat.filter(function(r){ return !r.archived; }).forEach(function(r){
       var o = document.createElement('option');
       o.value = r.id;
       o.textContent = formatTanggal(r.tanggal) + ' — ' + (r.nama||'').substring(0,30);
@@ -3458,6 +3660,7 @@ function fv(id) { var el = document.getElementById(id); return el ? el.value : '
 function getFilteredRapat() {
   var rid = fv('flt-lengkap-rapat'), st = fv('flt-lengkap-status');
   return localRapat.filter(function(r){
+    if (r.archived) return false;
     return (!rid || r.id === rid) && (!st || (r.status||'') === st);
   });
 }
@@ -3473,6 +3676,7 @@ function getLengkapProgressSeksi() {
 function getLengkapTodo() {
   var seksi = fv('flt-lengkap-seksi'), st = fv('flt-lengkap-todo-status'), pri = fv('flt-lengkap-prioritas');
   return localTodo.filter(function(t){
+    if (!isRapatAktif(t.rapatId)) return false;
     if (seksi && (t.seksi||'') !== seksi) return false;
     if (st === 'selesai' && !t.done) return false;
     if (st === 'belum' && t.done) return false;
@@ -3483,6 +3687,7 @@ function getLengkapTodo() {
 function getLengkapKendala() {
   var seksi = fv('flt-lengkap-seksi'), st = fv('flt-lengkap-kendala-status'), pri = fv('flt-lengkap-prioritas');
   return localKendala.filter(function(k){
+    if (!isRapatAktif(k.rapatId)) return false;
     if (seksi && (k.seksi||'') !== seksi) return false;
     if (st && (k.status||'') !== st) return false;
     if (pri && (k.prioritas||'') !== pri) return false;
@@ -3495,6 +3700,7 @@ function getLengkapAbsensi() {
   var rid = fv('flt-lengkap-absensi-rapat'), st = fv('flt-lengkap-absensi-status');
   // 'belum' tidak ada di localAbsensi (artinya tidak ada catatan), ditangani saat render baris.
   var recs = localAbsensi.filter(function(a){
+    if (!isRapatAktif(a.rapatId)) return false;
     if (rid && a.rapatId !== rid) return false;
     if (st && st !== 'belum' && (a.status||'') !== st) return false;
     return true;
@@ -3518,6 +3724,7 @@ function getFilteredProgressSeksi() {
 function getFilteredTodo() {
   var seksi = fv('flt-todo-seksi'), st = fv('flt-todo-status'), pri = fv('flt-todo-prioritas');
   return localTodo.filter(function(t){
+    if (!isRapatAktif(t.rapatId)) return false;
     if (seksi && (t.seksi||'') !== seksi) return false;
     if (st === 'selesai' && !t.done) return false;
     if (st === 'belum' && t.done) return false;
@@ -3528,6 +3735,7 @@ function getFilteredTodo() {
 function getFilteredKendala() {
   var seksi = fv('flt-kendala-seksi'), st = fv('flt-kendala-status'), pri = fv('flt-kendala-prioritas');
   return localKendala.filter(function(k){
+    if (!isRapatAktif(k.rapatId)) return false;
     if (seksi && (k.seksi||'') !== seksi) return false;
     if (st && (k.status||'') !== st) return false;
     if (pri && (k.prioritas||'') !== pri) return false;
@@ -3703,7 +3911,7 @@ function buildReportHTML(type) {
     if (type === 'lengkap') { var _f = getLengkapAbsensi(); absRid = _f.rid; absSt = _f.st; }
 
     // Catatan untuk ringkasan (dibatasi filter rapat; status dihitung apa adanya agar % bermakna)
-    var summaryAbs = localAbsensi.filter(function(a){ return !absRid || a.rapatId === absRid; });
+    var summaryAbs = localAbsensi.filter(function(a){ return isRapatAktif(a.rapatId) && (!absRid || a.rapatId === absRid); });
     var totalHadir = summaryAbs.filter(function(a){ return a.status==='hadir'; }).length;
     var totalIzin  = summaryAbs.filter(function(a){ return a.status==='izin'; }).length;
     var totalAlpa  = summaryAbs.filter(function(a){ return a.status==='alpa'; }).length;
@@ -3720,6 +3928,7 @@ function buildReportHTML(type) {
 
     // Absensi per rapat (dibatasi oleh filter Rapat Absensi bila dipilih)
     var rapatDenganAbsensi = localRapat.filter(function(r){
+      if (r.archived) return false;
       if (absRid && r.id !== absRid) return false;
       return localAbsensi.some(function(a){ return a.rapatId===r.id; });
     });
@@ -3887,6 +4096,7 @@ function exportReportExcel(type) {
     var absRowsLengkap = [];
     var noAbs = 0;
     var rapatAbsList = localRapat.filter(function(r){
+      if (r.archived) return false;
       if (fAbs.rid && r.id !== fAbs.rid) return false;
       return localAbsensi.some(function(a){ return a.rapatId===r.id; });
     });
