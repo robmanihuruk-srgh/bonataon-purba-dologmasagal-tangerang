@@ -844,12 +844,18 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Penanggung Jawab (PIC)</label>
-          <input type="text" id="taskPicInput" placeholder="Nama / email untuk notifikasi">
+          <label>Tanggal mulai <span style="font-weight:400;color:var(--color-text-light);font-size:0.8em;">(opsional, untuk Timeline)</span></label>
+          <input type="datetime-local" id="taskStartInput">
         </div>
         <div class="form-group">
           <label>Tenggat waktu (deadline)</label>
           <input type="datetime-local" id="taskDeadlineInput">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Penanggung Jawab (PIC)</label>
+          <input type="text" id="taskPicInput" placeholder="Nama / email untuk notifikasi">
         </div>
       </div>
       <div class="form-group">
@@ -3580,6 +3586,8 @@
           const pic = task.pic || '\u2014';
           const deadline = task.deadline ? new Date(task.deadline) : null;
           const deadlineStr = deadline ? deadline.toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+          const startD = task.startDate ? new Date(task.startDate) : null;
+          const startStr = startD ? startD.toLocaleString('id-ID', { day:'numeric', month:'short' }) : '';
           
           let attachmentsHtml = '';
           if (task.attachments && task.attachments.length > 0) {
@@ -3614,7 +3622,7 @@
                   <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${progress}%;"></div></div>
                   <span class="progress-percent">${progress}%</span>
                 </div>
-                ${deadline ? `<div class="task-deadline"><i class="fas fa-calendar-alt"></i> ${deadlineStr}</div>` : ''}
+                ${deadline ? `<div class="task-deadline"><i class="fas fa-calendar-alt"></i> ${startStr ? startStr + ' \u2192 ' : ''}${deadlineStr}</div>` : ''}
                 <div class="task-actions">
                   <button id="edit-task-${task.id}" title="Edit" ${!canEditTask ? 'disabled class="disabled"' : ''}><i class="fas fa-pencil-alt"></i></button>
                   <button id="del-task-${task.id}" title="Hapus" ${!canEditTask ? 'disabled class="disabled"' : ''}><i class="fas fa-trash"></i></button>
@@ -4533,6 +4541,7 @@
         document.getElementById('taskStatusInput').value = task ? task.status : 'rencana';
         document.getElementById('taskProgressInput').value = task ? (task.progress ?? 0) : 0;
         document.getElementById('taskPicInput').value = task ? (task.pic || '') : '';
+        document.getElementById('taskStartInput').value = task && task.startDate ? task.startDate.slice(0, 16) : '';
         document.getElementById('taskDeadlineInput').value = task && task.deadline ? task.deadline.slice(0, 16) : '';
         document.getElementById('taskNotesInput').value = task ? (task.notes || '') : '';
         document.getElementById('modalTaskTitle').innerText = task ? 'Edit Tugas' : 'Tugas Baru';
@@ -4601,8 +4610,12 @@
         const status = document.getElementById('taskStatusInput').value;
         const progress = parseInt(document.getElementById('taskProgressInput').value, 10) || 0;
         const pic = document.getElementById('taskPicInput').value.trim();
+        const startDate = document.getElementById('taskStartInput').value;
         const deadline = document.getElementById('taskDeadlineInput').value;
         const notes = document.getElementById('taskNotesInput').value.trim();
+        if (startDate && deadline && startDate > deadline) {
+          return alert('Tanggal mulai tidak boleh setelah tenggat waktu (deadline).');
+        }
         
         const fileInput = document.getElementById('taskAttachmentInput');
         const saveBtn = document.getElementById('saveTaskModal');
@@ -4641,7 +4654,7 @@
                         path: 'rtdb'
                     });
                     
-                    const taskData = { desc, status, progress, pic, notes, deadline, attachments };
+                    const taskData = { desc, status, progress, pic, notes, startDate, deadline, attachments };
                     if (currentTaskId) taskData.id = currentTaskId;
                     
                     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
@@ -4668,7 +4681,7 @@
 
         } else {
             try {
-                const taskData = { desc, status, progress, pic, notes, deadline, attachments };
+                const taskData = { desc, status, progress, pic, notes, startDate, deadline, attachments };
                 if (currentTaskId) taskData.id = currentTaskId;
                 
                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
@@ -7355,6 +7368,339 @@
 
 <!-- ========================================================= -->
 <!-- SELESAI: FITUR KALENDER INTERAKTIF NOTULA v2.0 (FIXED)    -->
+<!-- ========================================================= -->
+
+<!-- ========================================================= -->
+<!-- FITUR TIMELINE GANTT NOTULA v1.0                          -->
+<!-- Otomatis dari data tugas (seksi + deadline). Single-file. -->
+<!-- Tidak mengubah fitur kalender / lainnya.                  -->
+<!-- ========================================================= -->
+<style>
+  #btn-trigger-gantt {
+    background: var(--color-secondary, #1a2b4c); color: white; border: none; padding: 10px 18px;
+    border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-body, 'Poppins', sans-serif); font-weight: 600; transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: fixed; bottom: 84px; right: 30px; z-index: 9999;
+  }
+  #btn-trigger-gantt:hover { background: var(--color-secondary-light, #2a3c65); transform: scale(1.05); }
+
+  #notula-gantt-overlay {
+    display: none; position: fixed; inset: 0; background: var(--color-bg-light, #f4f7fb);
+    z-index: 10000; flex-direction: column; overflow: hidden;
+  }
+  #notula-gantt-header {
+    padding: 16px 24px; background: var(--color-card-bg, #fff); border-bottom: 1px solid var(--color-border, #e2e8f0);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  }
+  #notula-gantt-header h2 {
+    margin: 0; font-size: 1.25rem; color: var(--color-secondary, #1a2b4c);
+    font-family: var(--font-heading, 'Poppins', sans-serif); display: flex; align-items: center; gap: 10px;
+  }
+  #notula-gantt-header .gantt-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #gantt-scope-select {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid var(--color-border, #e2e8f0);
+    font-family: var(--font-body,'Poppins',sans-serif); font-size: 0.9rem; background: #fff; color: var(--color-text,#334155); cursor: pointer;
+  }
+  #btn-close-gantt {
+    background: var(--color-primary, #b8860b); color: #fff; border: none; padding: 9px 16px; border-radius: 8px;
+    font-weight: 600; cursor: pointer; font-family: var(--font-body,'Poppins',sans-serif); transition: 0.2s;
+  }
+  #btn-close-gantt:hover { background: var(--color-primary-dark, #9b7208); transform: translateY(-1px); }
+  #btn-export-gantt {
+    background: #fff; color: var(--color-secondary,#1a2b4c); border: 1px solid var(--color-border,#e2e8f0); padding: 9px 16px;
+    border-radius: 8px; font-weight: 600; cursor: pointer; font-family: var(--font-body,'Poppins',sans-serif); transition: 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  #btn-export-gantt:hover { border-color: var(--color-primary,#b8860b); color: var(--color-primary,#b8860b); }
+
+  #notula-gantt-body { flex: 1; overflow: auto; padding: 20px 24px; }
+  .gantt-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.85rem; color: var(--color-text-light,#64748b); }
+  .gantt-legend .lg { display: flex; align-items: center; gap: 6px; }
+  .gantt-legend .sw { width: 22px; height: 12px; border-radius: 3px; display: inline-block; }
+  .gantt-sw-selesai { background: #16a34a; }
+  .gantt-sw-berlangsung { background: #3498db; }
+  .gantt-sw-rencana { background: #f5a623; }
+  .gantt-sw-kendala { background: #dc3545; }
+  .gantt-sw-ms { color: #dc3545; font-size: 0.9rem; }
+
+  .gantt-wrap { min-width: 720px; background: var(--color-card-bg,#fff); border: 1px solid var(--color-border,#e2e8f0);
+    border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+  .gantt-grid { display: grid; }
+  .gantt-cell { border-right: 1px solid var(--color-border,#eef2f7); border-bottom: 1px solid var(--color-border,#eef2f7);
+    min-height: 30px; position: relative; }
+  .gantt-corner { background: var(--color-bg-light,#f4f7fb); font-weight: 700; color: var(--color-secondary,#1a2b4c);
+    display: flex; align-items: center; padding: 8px 12px; font-size: 0.85rem; position: sticky; left: 0; z-index: 5;
+    border-right: 1px solid var(--color-border,#e2e8f0); }
+  .gantt-timehead { background: var(--color-bg-light,#f4f7fb); text-align: center; font-size: 0.72rem; font-weight: 600;
+    color: var(--color-text,#334155); padding: 6px 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .gantt-timehead small { color: var(--color-text-light,#64748b); font-weight: 500; font-size: 0.66rem; }
+  .gantt-rowlabel { background: #fff; font-weight: 600; color: var(--color-secondary,#1a2b4c); font-size: 0.82rem;
+    padding: 8px 12px; display: flex; align-items: center; position: sticky; left: 0; z-index: 4;
+    border-right: 1px solid var(--color-border,#e2e8f0); }
+  .gantt-track { position: relative; }
+  .gantt-track.zebra { background: rgba(0,0,0,0.015); }
+  .gantt-bar { position: absolute; top: 5px; height: 20px; border-radius: 10px; display: flex; align-items: center;
+    padding: 0 8px; font-size: 0.7rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: default; z-index: 3; }
+  .gantt-bar.stk { top: auto; }
+  .gantt-bar-selesai { background: #16a34a; }
+  .gantt-bar-berlangsung { background: #3498db; }
+  .gantt-bar-rencana { background: #f5a623; color: #4a3500; }
+  .gantt-bar-kendala { background: #dc3545; }
+  .gantt-ms { position: absolute; top: 50%; transform: translate(-50%,-50%); color: #dc3545; font-size: 0.95rem; z-index: 6; text-shadow: 0 1px 1px rgba(0,0,0,0.15); }
+  .gantt-today { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed #dc3545; z-index: 7; }
+  .gantt-empty { text-align: center; padding: 60px 20px; color: var(--color-text-light,#64748b); }
+  .gantt-empty i { font-size: 2.4rem; color: var(--color-border,#cbd5e1); margin-bottom: 12px; }
+  @media (max-width: 768px) {
+    #notula-gantt-header h2 { font-size: 1.05rem; }
+    #notula-gantt-body { padding: 12px; }
+  }
+</style>
+
+<button id="btn-trigger-gantt" title="Timeline Gantt tugas per seksi">
+  <i class="fas fa-stream"></i> Timeline
+</button>
+
+<div id="notula-gantt-overlay">
+  <div id="notula-gantt-header">
+    <h2><i class="fas fa-stream"></i> Timeline Proyek &mdash; Jadwal &amp; Milestone</h2>
+    <div class="gantt-head-actions">
+      <select id="gantt-scope-select" title="Pilih cakupan data">
+        <option value="active">Rapat Aktif</option>
+        <option value="all">Semua Rapat</option>
+      </select>
+      <button id="btn-export-gantt"><i class="fas fa-file-pdf"></i> Export PDF</button>
+      <button id="btn-close-gantt">Kembali ke Workspace</button>
+    </div>
+  </div>
+  <div id="notula-gantt-body">
+    <div class="gantt-legend">
+      <span class="lg"><span class="sw gantt-sw-selesai"></span> Selesai</span>
+      <span class="lg"><span class="sw gantt-sw-berlangsung"></span> Berlangsung</span>
+      <span class="lg"><span class="sw gantt-sw-rencana"></span> Rencana</span>
+      <span class="lg"><span class="sw gantt-sw-kendala"></span> Kendala</span>
+      <span class="lg"><span class="gantt-sw-ms">&#9733;</span> Milestone (deadline)</span>
+    </div>
+    <div id="gantt-render-target"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var overlay = document.getElementById('notula-gantt-overlay');
+  var target = document.getElementById('gantt-render-target');
+  var btnOpen = document.getElementById('btn-trigger-gantt');
+  var btnClose = document.getElementById('btn-close-gantt');
+  var btnExport = document.getElementById('btn-export-gantt');
+  var scopeSel = document.getElementById('gantt-scope-select');
+
+  var DAY = 86400000;
+  var STATUS_CLASS = { selesai:'selesai', berlangsung:'berlangsung', rencana:'rencana', kendala:'kendala' };
+
+  function parseDate(str) {
+    if (!str) return null;
+    var s = String(str);
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d,n){ return new Date(d.getTime()+n*DAY); }
+  function diffDays(a,b){ return Math.round((stripTime(b)-stripTime(a))/DAY); }
+  function fmtShort(d){
+    var mo=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    return d.getDate()+' '+mo[d.getMonth()];
+  }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+  // Kumpulkan baris (seksi) + item tugas dari data meeting
+  function collectData() {
+    var meetings = window.meetings || [];
+    var scope = scopeSel ? scopeSel.value : 'active';
+    var chosen = meetings;
+    if (scope === 'active' && window.currentMeetingId) {
+      chosen = meetings.filter(function(m){ return m.id === window.currentMeetingId; });
+      if (!chosen.length) chosen = meetings; // fallback: jika tak ada aktif, tampilkan semua
+    }
+
+    var rowsMap = {};   // key seksi -> { name, items:[] }
+    var order = [];
+    var minD = null, maxD = null;
+
+    chosen.forEach(function(meeting){
+      if (!meeting || meeting.deletedAt) return; // hormati soft-delete
+      var secs = (meeting.sections && Array.isArray(meeting.sections)) ? meeting.sections : [];
+      secs.forEach(function(section){
+        var secName = (section && section.name) ? section.name : 'Tanpa Seksi';
+        var tasks = (section && Array.isArray(section.tasks)) ? section.tasks : [];
+        tasks.forEach(function(task){
+          if (!task) return;
+          var end = parseDate(task.deadline);
+          // startDate opsional (jika suatu saat ditambahkan ke form); fallback: mulai = deadline (bar 1 hari)
+          var start = parseDate(task.startDate || task.start || task.mulai) || end;
+          if (!end && !start) return; // tanpa tanggal, tak bisa ditimeline
+          if (!end) end = start;
+          if (!start) start = end;
+          if (start > end) { var t = start; start = end; end = t; }
+
+          if (!rowsMap[secName]) { rowsMap[secName] = { name: secName, items: [] }; order.push(secName); }
+          rowsMap[secName].items.push({
+            desc: task.desc || 'Tugas',
+            pic: task.pic || '-',
+            status: STATUS_CLASS[task.status] ? task.status : 'rencana',
+            start: start, end: end,
+            hasStart: !!parseDate(task.startDate || task.start || task.mulai)
+          });
+          if (!minD || start < minD) minD = start;
+          if (!maxD || end > maxD) maxD = end;
+        });
+      });
+    });
+
+    if (!order.length) return null;
+    return { rows: order.map(function(k){ return rowsMap[k]; }), min: stripTime(minD), max: stripTime(maxD) };
+  }
+
+  // Susun kolom mingguan menutupi rentang
+  function buildWeeks(min, max) {
+    var startWeek = addDays(min, -((min.getDay()+6)%7)); // mulai Senin
+    var cols = [];
+    var cur = startWeek;
+    var guard = 0;
+    while (cur <= max && guard < 400) {
+      cols.push({ start: new Date(cur), end: addDays(cur, 6) });
+      cur = addDays(cur, 7);
+      guard++;
+    }
+    if (!cols.length) cols.push({ start: new Date(min), end: addDays(min,6) });
+    return cols;
+  }
+
+  function render() {
+    var data = collectData();
+    if (!data) {
+      target.innerHTML = '<div class="gantt-empty"><i class="fas fa-stream"></i>' +
+        '<div><strong>Belum ada tugas ber-deadline untuk ditampilkan.</strong></div>' +
+        '<div style="margin-top:6px;font-size:0.85rem;">Tambahkan deadline pada tugas di seksi rapat, lalu buka Timeline lagi.</div></div>';
+      return;
+    }
+    var weeks = buildWeeks(data.min, data.max);
+    var nWeeks = weeks.length;
+    var totalDays = diffDays(weeks[0].start, weeks[nWeeks-1].end) + 1;
+    var LABEL = 190; // px lebar kolom label seksi
+
+    var html = '<div class="gantt-wrap"><div class="gantt-grid" style="grid-template-columns:' + LABEL + 'px repeat(' + nWeeks + ',minmax(78px,1fr));">';
+
+    // Header row
+    html += '<div class="gantt-cell gantt-corner">Seksi \\ Waktu</div>';
+    weeks.forEach(function(w){
+      html += '<div class="gantt-cell gantt-timehead">Minggu ' +
+              '<small>' + esc(fmtShort(w.start)) + ' - ' + esc(fmtShort(w.end)) + '</small></div>';
+    });
+
+    // Data rows
+    data.rows.forEach(function(row, ri){
+      html += '<div class="gantt-cell gantt-rowlabel">' + esc(row.name) + '</div>';
+      // Track cell membentang semua kolom minggu
+      var stacked = row.items.slice().sort(function(a,b){ return a.start - b.start; });
+      var rowH = Math.max(30, stacked.length * 26 + 8);
+      html += '<div class="gantt-cell gantt-track' + (ri%2?' zebra':'') + '" style="grid-column: 2 / span ' + nWeeks + '; height:' + rowH + 'px;">';
+
+      stacked.forEach(function(it, idx){
+        var offset = diffDays(weeks[0].start, it.start);
+        var span = diffDays(it.start, it.end) + 1;
+        var leftPct = (offset / totalDays) * 100;
+        var widthPct = (span / totalDays) * 100;
+        var topPx = 5 + idx * 26;
+        var label = it.desc + (it.pic && it.pic !== '-' ? ' (' + it.pic + ')' : '');
+        var titleAttr = it.desc + ' | PIC: ' + it.pic + ' | ' +
+                        fmtShort(it.start) + (it.hasStart ? ' - ' + fmtShort(it.end) : ' (deadline)') +
+                        ' | Status: ' + it.status;
+        html += '<div class="gantt-bar gantt-bar-' + it.status + ' stk" style="left:' + leftPct.toFixed(3) + '%;width:' +
+                Math.max(widthPct, 1.4).toFixed(3) + '%;top:' + topPx + 'px;" title="' + esc(titleAttr) + '">' + esc(label) + '</div>';
+        // Milestone bintang di ujung deadline (dijaga tetap di dalam track)
+        var msLeft = ((diffDays(weeks[0].start, it.end) + 1) / totalDays) * 100;
+        if (msLeft > 99) msLeft = 99;
+        html += '<div class="gantt-ms" style="left:' + msLeft.toFixed(3) + '%;top:' + (topPx + 10) + 'px;" title="Milestone: ' + esc(it.desc) + ' (' + esc(fmtShort(it.end)) + ')">&#9733;</div>';
+      });
+
+      // Garis "hari ini"
+      var today = stripTime(new Date());
+      if (today >= weeks[0].start && today <= weeks[nWeeks-1].end) {
+        var tLeft = ((diffDays(weeks[0].start, today) + 0.5) / totalDays) * 100;
+        html += '<div class="gantt-today" style="left:' + tLeft.toFixed(3) + '%;" title="Hari ini"></div>';
+      }
+      html += '</div>';
+    });
+
+    html += '</div></div>';
+    target.innerHTML = html;
+  }
+
+  function openGantt(){ overlay.style.display = 'flex'; render(); }
+  function closeGantt(){ overlay.style.display = 'none'; }
+
+  if (btnOpen) btnOpen.addEventListener('click', openGantt);
+  if (btnClose) btnClose.addEventListener('click', closeGantt);
+  if (scopeSel) scopeSel.addEventListener('change', render);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && overlay.style.display === 'flex') closeGantt();
+  });
+
+  // Export PDF sederhana memakai jsPDF (sudah dimuat di aplikasi)
+  if (btnExport) btnExport.addEventListener('click', function(){
+    try {
+      var data = collectData();
+      if (!data) { alert('Tidak ada data timeline untuk diexport.'); return; }
+      var jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF || null);
+      if (!jsPDFCtor) { alert('Library PDF belum siap.'); return; }
+      var doc = new jsPDFCtor({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      var pw = doc.internal.pageSize.getWidth();
+      var margin = 32;
+      doc.setFontSize(16); doc.setTextColor(26,43,76);
+      doc.text('Timeline Proyek - Jadwal & Milestone', margin, 40);
+      doc.setFontSize(9); doc.setTextColor(100);
+      doc.text('Dibuat: ' + new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}), margin, 56);
+
+      if (doc.autoTable) {
+        var body = [];
+        data.rows.forEach(function(row){
+          row.items.forEach(function(it){
+            body.push([
+              row.name,
+              it.desc,
+              it.pic,
+              ({selesai:'Selesai',berlangsung:'Berlangsung',rencana:'Rencana',kendala:'Kendala'})[it.status] || it.status,
+              fmtShort(it.start) + (it.hasStart ? ' - ' + fmtShort(it.end) : ''),
+              fmtShort(it.end)
+            ]);
+          });
+        });
+        doc.autoTable({
+          startY: 70, margin: { left: margin, right: margin },
+          head: [['Seksi','Tugas','PIC','Status','Periode','Milestone/Deadline']],
+          body: body,
+          styles: { fontSize: 8, cellPadding: 4 },
+          headStyles: { fillColor: [26,43,76] },
+          alternateRowStyles: { fillColor: [244,247,251] }
+        });
+      }
+      doc.save('Timeline_Proyek_' + new Date().toISOString().slice(0,10) + '.pdf');
+    } catch (err) {
+      console.error('[Timeline] Export gagal:', err);
+      alert('Export PDF gagal: ' + err.message);
+    }
+  });
+
+  console.log('[Timeline] Fitur Timeline Gantt berhasil diinisialisasi.');
+})();
+</script>
+<!-- ========================================================= -->
+<!-- SELESAI: FITUR TIMELINE GANTT NOTULA v1.0                 -->
 <!-- ========================================================= -->
 <script>
 (function() {
