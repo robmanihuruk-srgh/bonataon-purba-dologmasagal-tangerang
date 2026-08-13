@@ -460,6 +460,29 @@
       body, .main-panel, .content { background: white; overflow: visible; height: auto; margin-left: 0 !important;}
       .content { padding: 0.5in; }
       .section-card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+
+      /* ===== CETAK: Tim yang Ditugaskan =====
+         Tujuan: tampil SAMA seperti di layar (Sie berkolom menyamping & rapi),
+         dan seluruh susunan tim muat dalam SATU halaman.
+         Tata letak grid dipertahankan; agar muat satu halaman, kartu diskalakan
+         otomatis lewat JS saat mencetak (lihat fungsi fitAssignedTeamsForPrint). */
+      .assigned-teams-print { break-inside: avoid; page-break-inside: avoid; }
+      .assigned-team-block {
+        break-inside: avoid; page-break-inside: avoid;
+        border: 1px solid #ccc !important; box-shadow: none;
+      }
+      /* Grid Sie dipertahankan saat cetak; jumlah kolom diset oleh JS (satu baris) */
+      .sie-print-grid {
+        display: grid !important;
+        align-items: start;
+        gap: 10px !important;
+      }
+      .sie-print-block { break-inside: avoid; page-break-inside: avoid; }
+      .sie-print-member { break-inside: avoid; page-break-inside: avoid; }
+      /* Tombol edit (pensil) disembunyikan saat cetak */
+      .sie-print-member button { display: none !important; }
+      /* Wrapper skala: diberi transform oleh JS agar pas satu halaman */
+      .print-scale-wrapper { transform-origin: top left; }
     }
     @media (max-width: 768px) {
       body { flex-direction: column; overflow: auto; height: auto; }
@@ -547,8 +570,8 @@
     .team-detail-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--color-secondary); }
     .team-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
     .team-detail-header h3 { font-size: 1.2rem; font-weight: 700; color: var(--color-secondary); font-family: var(--font-heading); margin: 0; display: flex; align-items: center; gap: 10px; }
-    .team-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-    .team-member-card { background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; }
+    .team-members-grid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+    .team-member-card { flex: 1 1 240px; min-width: 220px; max-width: 340px; background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; }
     .team-member-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #ffffff; }
     .member-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--color-secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; flex-shrink: 0; }
     .member-info { flex: 1; min-width: 0; }
@@ -578,7 +601,8 @@
     .archived-badge { display: inline-block; background: #f0fdf4; color: #15803d; font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; margin-left: 8px; border: 1px solid #bbf7d0; }
 
     @media (max-width: 768px) {
-      .team-members-grid { grid-template-columns: 1fr; }
+      .team-members-grid { flex-direction: column; }
+      .team-members-grid .team-member-card { flex: 1 1 auto; max-width: none; min-width: 0; }
       .team-actions-sidebar { opacity: 1; }
       .team-detail-card { padding: 16px; }
     }
@@ -2272,46 +2296,97 @@
         }
       };
 
-      function renderTeamCardInner(team) {
+      function renderTeamCardInner(team, canEditNames = false) {
         // Menghasilkan isi kartu (header + daftar anggota) untuk satu tim.
+        // Sie/Seksi ditata MENYAMPING ke kanan (horizontal, membungkus) — bukan menumpuk ke bawah.
+        // Bila canEditNames = true, nama anggota dapat diedit lewat tombol pensil.
         let inner = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border);">
             <h4 style="margin: 0; color: var(--color-secondary); font-family: var(--font-heading);"><i class="fas fa-user-friends" style="color: var(--color-primary); margin-right: 8px;"></i>${escapeHtml(team.name || 'Tim')}</h4>
             <span style="font-size: 0.75rem; background: var(--color-bg-light); padding: 2px 10px; border-radius: 12px; color: var(--color-text-light);">${team.members?.length || 0} anggota</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">`;
+          <div class="sie-print-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; gap: 14px;">`;
 
         if (team.members && team.members.length > 0) {
           const groups = groupTeamMembersBySection(team.members);
           groups.forEach(group => {
-            // Header Sie di dalam kartu
-            inner += `<div style="display:flex; align-items:center; gap:6px; margin-top:6px; padding:4px 8px; background:var(--color-bg-light); border-radius:6px;">
+            // Setiap Sie menjadi satu KOLOM seragam dalam grid; kolom membungkus rapi ke bawah bila penuh.
+            // Class 'sie-print-block' dipakai agar saat DICETAK, satu Sie (koordinator + anggota) tidak terpotong antar halaman.
+            inner += `<div class="sie-print-block" style="display: flex; flex-direction: column; gap: 8px;">`;
+            // Header Sie di dalam kolom — dengan aksen kiri dan jumlah anggota per Sie
+            inner += `<div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--color-bg-light); border-left:3px solid var(--color-primary); border-radius:6px;">
               <i class="fas fa-layer-group" style="color: var(--color-primary); font-size:0.8rem;"></i>
-              <span style="font-weight:700; font-size:0.82rem; color:var(--color-secondary);">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
+              <span style="font-weight:700; font-size:0.82rem; color:var(--color-secondary); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
+              <span style="font-size:0.68rem; font-weight:600; background:#fff; border:1px solid var(--color-border); color:var(--color-text-light); padding:1px 8px; border-radius:10px; flex-shrink:0;">${group.members.length}</span>
             </div>`;
             group.members.forEach(member => {
               const roleClass = member.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
               const roleLabel = member.role === 'koordinator' ? 'Koordinator' : 'Anggota';
-              inner += `<div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
+              const memberKey = (member.email || '') + '||' + (member.name || '') + '||' + (member.section || '');
+              const keyEsc = memberKey.replace(/'/g, "\\'");
+              const teamIdEsc = (team.id || '').replace(/'/g, "\\'");
+              const editBtn = canEditNames
+                ? `<button title="Edit nama" onclick="editTeamMemberNameByKey('${teamIdEsc}','${keyEsc}')" style="background:transparent; border:none; cursor:pointer; color:var(--color-primary); padding:4px; font-size:0.8rem;"><i class="fas fa-pen"></i></button>`
+                : '';
+              inner += `<div class="sie-print-member" style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
                 <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(member.name || member.email || '?').charAt(0).toUpperCase()}</div>
                 <div style="flex: 1; min-width: 0;">
-                  <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary);">${escapeHtml(member.name || 'Tanpa Nama')}</div>
-                  <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(member.email || '-')}</div>
+                  <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary); word-break: break-word;">${escapeHtml(member.name || 'Tanpa Nama')}</div>
+                  <div style="font-size: 0.8rem; color: var(--color-text-light); word-break: break-all;">${escapeHtml(member.email || '-')}</div>
+                  <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem; margin-top: 4px;">${roleLabel}</span>
                 </div>
-                <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem;">${roleLabel}</span>
+                ${editBtn}
               </div>`;
             });
+            inner += `</div>`;
           });
         } else {
-          inner += `<div style="text-align: center; color: var(--color-text-light); font-size: 0.85rem; padding: 12px;"><i class="fas fa-info-circle"></i> Belum ada anggota dalam tim ini.</div>`;
+          inner += `<div style="text-align: center; color: var(--color-text-light); font-size: 0.85rem; padding: 12px; width:100%;"><i class="fas fa-info-circle"></i> Belum ada anggota dalam tim ini.</div>`;
         }
         inner += `</div>`;
         return inner;
       }
 
+      // Edit nama anggota tim (berbasis key stabil email||name||section).
+      window.editTeamMemberNameByKey = async (teamId, key) => {
+        let team = teams.find(t => t.id === teamId);
+        if (!team) {
+          try {
+            const snap = await db.collection('teams').doc(teamId).get();
+            if (snap.exists) { team = { id: snap.id, ...snap.data() }; if (!teams.find(t => t.id === team.id)) teams.push(team); }
+          } catch (e) { /* abaikan */ }
+        }
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) return;
+        const current = team.members[idx].name || '';
+        const nextName = prompt('Ubah nama anggota:', current);
+        if (nextName === null) return; // batal
+        const trimmed = nextName.trim();
+        if (!trimmed) { alert('Nama tidak boleh kosong.'); return; }
+        if (trimmed === current) return; // tidak berubah
+        const updatedMembers = [...team.members];
+        updatedMembers[idx] = { ...updatedMembers[idx], name: trimmed };
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers });
+          team.members = updatedMembers;
+          // Segarkan tampilan yang relevan bila fungsinya tersedia.
+          if (typeof renderTeamMemberList === 'function' && currentTeamId === teamId) { try { renderTeamMemberList(team); } catch (e) {} }
+          if (typeof renderTeamList === 'function') { try { renderTeamList(); } catch (e) {} }
+          if (typeof currentTeamId !== 'undefined' && currentTeamId === teamId && typeof renderTeamDetail === 'function') { try { renderTeamDetail(team); } catch (e) {} }
+          // Segarkan kartu tim yang ditugaskan di detail rapat (bila sedang terbuka).
+          const assignedCard = document.getElementById('assigned-team-card-' + teamId);
+          if (assignedCard) assignedCard.innerHTML = renderTeamCardInner(team, true);
+        } catch (error) {
+          alert('Gagal mengubah nama: ' + error.message);
+        }
+      };
+
       function renderAssignedTeams(meeting) {
         if (!meeting.assignedTeamIds || meeting.assignedTeamIds.length === 0) return '';
 
-        let html = `<div class="team-detail-card" style="margin-bottom: 24px;">
+        const canEditTeamNames = (userRole === 'admin') || (meeting.createdBy === currentUser?.uid);
+
+        let html = `<div class="team-detail-card assigned-teams-print" style="margin-bottom: 24px;">
           <div class="team-detail-header" style="margin-bottom: 20px;">
             <h3><i class="fas fa-users"></i> Tim yang Ditugaskan</h3>
           </div>
@@ -2324,9 +2399,9 @@
         meeting.assignedTeamIds.forEach(teamId => {
           const team = teams.find(t => t.id === teamId);
           const cardId = 'assigned-team-card-' + teamId;
-          html += `<div id="${cardId}" data-team-id="${escapeHtml(teamId)}" style="background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-bottom: 12px;">`;
+          html += `<div id="${cardId}" class="assigned-team-block" data-team-id="${escapeHtml(teamId)}" style="flex: 1 1 100%; background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-bottom: 12px;">`;
           if (team) {
-            html += renderTeamCardInner(team);
+            html += renderTeamCardInner(team, canEditTeamNames);
           } else {
             html += `<div style="display:flex; align-items:center; gap:10px; color: var(--color-text-light); font-size: 0.9rem;">
               <i class="fas fa-spinner fa-spin"></i> Memuat data tim...
@@ -2344,6 +2419,7 @@
       // rapat dirender ke DOM.
       async function enrichAssignedTeamCards(meeting) {
         if (!meeting || !meeting.assignedTeamIds || meeting.assignedTeamIds.length === 0) return;
+        const canEditTeamNames = (userRole === 'admin') || (meeting.createdBy === currentUser?.uid);
         for (const teamId of meeting.assignedTeamIds) {
           const card = document.getElementById('assigned-team-card-' + teamId);
           if (!card) continue;
@@ -2363,7 +2439,7 @@
             }
           }
           if (team) {
-            card.innerHTML = renderTeamCardInner(team);
+            card.innerHTML = renderTeamCardInner(team, canEditTeamNames);
           } else {
             card.innerHTML = `<div style="color:#dc2626; font-size:0.85rem;"><i class="fas fa-exclamation-triangle"></i> Data tim tidak ditemukan (mungkin telah dihapus).</div>`;
           }
@@ -6170,7 +6246,104 @@
         XLSX.writeFile(wb, `notula_${meeting.title.replace(/[^a-z0-9]/gi, '_')}.xlsx`);
       }
 
-      function printMeeting() { window.print(); }
+      // Menyisipkan aturan @page landscape sementara khusus untuk cetak susunan tim.
+      let _printLandscapeStyleEl = null;
+      function enablePrintLandscape() {
+        if (_printLandscapeStyleEl) return;
+        _printLandscapeStyleEl = document.createElement('style');
+        _printLandscapeStyleEl.id = 'print-landscape-temp';
+        _printLandscapeStyleEl.media = 'print';
+        _printLandscapeStyleEl.textContent = '@page { size: A4 landscape; margin: 10mm; }';
+        document.head.appendChild(_printLandscapeStyleEl);
+      }
+      function disablePrintLandscape() {
+        if (_printLandscapeStyleEl && _printLandscapeStyleEl.parentNode) {
+          _printLandscapeStyleEl.parentNode.removeChild(_printLandscapeStyleEl);
+        }
+        _printLandscapeStyleEl = null;
+      }
+
+      // Skalakan kartu "Tim yang Ditugaskan" agar SELURUH susunan Sie muat dalam SATU halaman,
+      // sambil mempertahankan tata letak kolom seperti di layar.
+      function fitAssignedTeamsForPrint() {
+        const cards = document.querySelectorAll('.assigned-team-block');
+        if (!cards.length) return;
+
+        // Ukuran area cetak landscape A4 (297 x 210 mm) dikurangi margin 10mm tiap sisi.
+        // Konversi mm -> px pada 96dpi: 1mm = 3.7795px.
+        const MM = 3.7795;
+        const pageW = (297 - 20) * MM;   // lebar dapat dicetak
+        const pageH = (210 - 20) * MM;   // tinggi dapat dicetak
+
+        cards.forEach(card => {
+          // Bersihkan penyesuaian sebelumnya bila ada
+          card.style.zoom = '';
+          card.style.transform = '';
+          card.style.transformOrigin = 'top left';
+          card.style.width = '';
+
+          // Semua Sie dibariskan dalam SATU baris agar susunannya sama seperti di layar
+          // (kolom menyamping), lalu seluruh baris itu diperkecil agar muat satu halaman.
+          const grid = card.querySelector('.sie-print-grid');
+          const sieCount = grid ? grid.querySelectorAll(':scope > .sie-print-block').length : 0;
+          let prevGridCols = '';
+          if (grid && sieCount > 0) {
+            prevGridCols = grid.style.gridTemplateColumns;
+            grid.style.gridTemplateColumns = 'repeat(' + sieCount + ', minmax(150px, 1fr))';
+            grid.dataset.prevCols = prevGridCols; // simpan untuk pemulihan
+          }
+
+          // Ukur ukuran natural pada layout satu-baris (biarkan melebar sesuai konten).
+          card.style.width = 'max-content';
+          card.style.maxWidth = 'none';
+          const naturalH = card.scrollHeight;
+          const naturalW = card.scrollWidth;
+
+          const scaleW = pageW / naturalW;
+          const scaleH = pageH / naturalH;
+          let scale = Math.min(scaleW, scaleH, 1); // jangan perbesar, hanya perkecil bila perlu
+
+          card.style.width = '';
+          card.style.maxWidth = '';
+
+          if (scale < 1) {
+            // 'zoom' memengaruhi tata letak sehingga paginator cetak melihat ukuran yang sudah kecil.
+            card.style.zoom = (scale * 0.97).toFixed(3);
+          }
+        });
+      }
+
+      function resetAssignedTeamsAfterPrint() {
+        document.querySelectorAll('.assigned-team-block').forEach(card => {
+          card.style.zoom = '';
+          card.style.transform = '';
+          card.style.width = '';
+          card.style.maxWidth = '';
+          card.style.marginBottom = '';
+          const grid = card.querySelector('.sie-print-grid');
+          if (grid) {
+            grid.style.gridTemplateColumns = grid.dataset.prevCols || '';
+            delete grid.dataset.prevCols;
+          }
+        });
+      }
+
+      // Hook global cetak: berlaku untuk Ctrl+P maupun tombol Cetak.
+      window.addEventListener('beforeprint', () => {
+        if (document.querySelector('.assigned-team-block')) {
+          enablePrintLandscape();
+          fitAssignedTeamsForPrint();
+        }
+      });
+      window.addEventListener('afterprint', () => {
+        resetAssignedTeamsAfterPrint();
+        disablePrintLandscape();
+      });
+
+      function printMeeting() {
+        // Penyesuaian satu-halaman ditangani oleh handler 'beforeprint' di atas.
+        window.print();
+      }
 
       document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
       document.getElementById('printBtn').addEventListener('click', printMeeting);
@@ -7563,7 +7736,11 @@
   .gantt-sw-ms { color: #dc3545; font-size: 0.9rem; }
 
   .gantt-wrap { min-width: 720px; background: var(--color-card-bg,#fff); border: 1px solid var(--color-border,#e2e8f0);
-    border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+    border-radius: 12px; overflow-x: auto; overflow-y: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+  /* Sembunyikan scrollbar bawaan wrap agar pengguna memakai slider yang jelas di bawah */
+  .gantt-wrap::-webkit-scrollbar { height: 8px; }
+  .gantt-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .gantt-wrap::-webkit-scrollbar-track { background: transparent; }
   .gantt-grid { display: grid; }
   .gantt-cell { border-right: 1px solid var(--color-border,#eef2f7); border-bottom: 1px solid var(--color-border,#eef2f7);
     min-height: 30px; position: relative; }
@@ -7590,6 +7767,37 @@
   .gantt-today { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed #dc3545; z-index: 7; }
   .gantt-empty { text-align: center; padding: 60px 20px; color: var(--color-text-light,#64748b); }
   .gantt-empty i { font-size: 2.4rem; color: var(--color-border,#cbd5e1); margin-bottom: 12px; }
+
+  /* ===== Slider geser horizontal timeline ===== */
+  #gantt-hscroll-bar {
+    position: sticky; bottom: 0; left: 0; right: 0; margin-top: 14px;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--color-card-bg,#fff); border: 1px solid var(--color-border,#e2e8f0);
+    border-radius: 10px; padding: 10px 14px; box-shadow: 0 -2px 10px rgba(0,0,0,0.04); z-index: 8;
+  }
+  .gantt-scroll-btn {
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: 8px; cursor: pointer;
+    background: var(--color-bg-light,#f4f7fb); border: 1px solid var(--color-border,#e2e8f0);
+    color: var(--color-secondary,#1a2b4c); font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+    transition: 0.15s;
+  }
+  .gantt-scroll-btn:hover { background: var(--color-primary,#b8860b); color: #fff; border-color: var(--color-primary,#b8860b); }
+  .gantt-scroll-btn:active { transform: scale(0.94); }
+  #gantt-hscroll {
+    flex: 1; -webkit-appearance: none; appearance: none; height: 8px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--color-primary,#b8860b) 0%, var(--color-primary,#b8860b) var(--gantt-fill,0%), #e2e8f0 var(--gantt-fill,0%), #e2e8f0 100%);
+    outline: none; cursor: pointer;
+  }
+  #gantt-hscroll::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-primary,#b8860b); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab;
+  }
+  #gantt-hscroll::-webkit-slider-thumb:active { cursor: grabbing; }
+  #gantt-hscroll::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary,#b8860b);
+    border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab;
+  }
+  #gantt-hscroll::-moz-range-track { height: 8px; border-radius: 6px; background: #e2e8f0; }
   @media (max-width: 768px) {
     #notula-gantt-header h2 { font-size: 1.05rem; }
     #notula-gantt-body { padding: 12px; }
@@ -7621,6 +7829,13 @@
       <span class="lg"><span class="gantt-sw-ms">&#9733;</span> Milestone (deadline)</span>
     </div>
     <div id="gantt-render-target"></div>
+    <!-- Slider geser horizontal: muncul hanya bila timeline lebih lebar dari layar,
+         membantu pengguna menggeser untuk melihat bulan/tanggal yang belum tampil (mis. Desember). -->
+    <div id="gantt-hscroll-bar" style="display:none;">
+      <button type="button" id="gantt-scroll-left" class="gantt-scroll-btn" title="Geser ke kiri" aria-label="Geser ke kiri"><i class="fas fa-chevron-left"></i></button>
+      <input type="range" id="gantt-hscroll" min="0" max="1000" value="0" step="1" aria-label="Geser timeline ke kanan atau kiri">
+      <button type="button" id="gantt-scroll-right" class="gantt-scroll-btn" title="Geser ke kanan" aria-label="Geser ke kanan"><i class="fas fa-chevron-right"></i></button>
+    </div>
   </div>
 </div>
 
@@ -7724,6 +7939,7 @@
       target.innerHTML = '<div class="gantt-empty"><i class="fas fa-stream"></i>' +
         '<div><strong>Belum ada tugas ber-deadline untuk ditampilkan.</strong></div>' +
         '<div style="margin-top:6px;font-size:0.85rem;">Tambahkan deadline pada tugas di seksi rapat, lalu buka Timeline lagi.</div></div>';
+      if (hbar) hbar.style.display = 'none';
       return;
     }
     var weeks = buildWeeks(data.min, data.max);
@@ -7777,7 +7993,94 @@
 
     html += '</div></div>';
     target.innerHTML = html;
+    // Setelah grid ter-render, perbarui slider geser (muncul bila timeline melebihi layar).
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function(){ refreshGanttSlider(); });
+    } else {
+      refreshGanttSlider();
+    }
   }
+
+  // ===== Slider geser horizontal =====
+  // Menyinkronkan posisi geser (scrollLeft) area timeline dengan input range,
+  // sehingga pengguna bisa menggeser untuk melihat minggu/bulan yang belum tampil (mis. Desember).
+  // Elemen yang benar-benar menggulir horizontal adalah '.gantt-wrap' (dibuat ulang tiap render).
+  var hbar = document.getElementById('gantt-hscroll-bar');
+  var hslider = document.getElementById('gantt-hscroll');
+  var btnScrollLeft = document.getElementById('gantt-scroll-left');
+  var btnScrollRight = document.getElementById('gantt-scroll-right');
+  var _syncingSlider = false; // cegah loop event scroll<->slider
+
+  function ganttScroller() {
+    // Kontainer gulir horizontal aktual = .gantt-wrap di dalam target render
+    return target ? target.querySelector('.gantt-wrap') : null;
+  }
+
+  function ganttMaxScroll() {
+    var sc = ganttScroller();
+    if (!sc) return 0;
+    return Math.max(0, sc.scrollWidth - sc.clientWidth);
+  }
+
+  // Perbarui tampilan slider (posisi + isi warna) berdasarkan scrollLeft saat ini.
+  function updateSliderFromScroll() {
+    var sc = ganttScroller();
+    if (!sc || !hslider || _syncingSlider) return;
+    var max = ganttMaxScroll();
+    if (max <= 1) { hslider.value = 0; hslider.style.setProperty('--gantt-fill', '0%'); return; }
+    var ratio = sc.scrollLeft / max;
+    _syncingSlider = true;
+    hslider.value = Math.round(ratio * 1000);
+    hslider.style.setProperty('--gantt-fill', (ratio * 100).toFixed(2) + '%');
+    _syncingSlider = false;
+  }
+
+  // Terapkan nilai slider -> scrollLeft.
+  function applySliderToScroll() {
+    var sc = ganttScroller();
+    if (!sc || !hslider || _syncingSlider) return;
+    var max = ganttMaxScroll();
+    var ratio = Number(hslider.value) / 1000;
+    _syncingSlider = true;
+    sc.scrollLeft = ratio * max;
+    hslider.style.setProperty('--gantt-fill', (ratio * 100).toFixed(2) + '%');
+    _syncingSlider = false;
+  }
+
+  // Tampilkan/sembunyikan bar slider tergantung apakah timeline melebihi lebar layar.
+  // Sekaligus pasang listener 'scroll' pada .gantt-wrap yang baru dibuat.
+  function refreshGanttSlider() {
+    var sc = ganttScroller();
+    if (!sc || !hbar) { if (hbar) hbar.style.display = 'none'; return; }
+    // Pasang listener scroll sekali per elemen wrap (ditandai dengan dataset).
+    if (!sc.dataset.sliderBound) {
+      sc.addEventListener('scroll', updateSliderFromScroll, { passive: true });
+      sc.dataset.sliderBound = '1';
+    }
+    var max = ganttMaxScroll();
+    if (max > 1) {
+      hbar.style.display = 'flex';
+      updateSliderFromScroll();
+    } else {
+      hbar.style.display = 'none';
+    }
+  }
+
+  // Geser sejumlah langkah (dipakai tombol panah).
+  function nudgeGanttScroll(dir) {
+    var sc = ganttScroller();
+    if (!sc) return;
+    var step = Math.max(120, sc.clientWidth * 0.6);
+    sc.scrollLeft += dir * step;
+    updateSliderFromScroll();
+  }
+
+  if (hslider) {
+    hslider.addEventListener('input', applySliderToScroll);
+  }
+  if (btnScrollLeft) btnScrollLeft.addEventListener('click', function(){ nudgeGanttScroll(-1); });
+  if (btnScrollRight) btnScrollRight.addEventListener('click', function(){ nudgeGanttScroll(1); });
+  window.addEventListener('resize', function(){ if (overlay.style.display === 'flex') refreshGanttSlider(); });
 
   function openGantt(){ overlay.style.display = 'flex'; render(); }
   function closeGantt(){ overlay.style.display = 'none'; }
@@ -7788,6 +8091,268 @@
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape' && overlay.style.display === 'flex') closeGantt();
   });
+
+  // ===== Menggambar CHART GANTT (vektor) ke PDF =====
+  // Mereplikasi tampilan timeline di layar: kolom label seksi, header minggu,
+  // batang berwarna sesuai status, dan bintang milestone. Menangani ganti halaman.
+  var GANTT_PDF_COLORS = {
+    selesai:     [22,163,74],   // hijau
+    berlangsung: [52,152,219],  // biru
+    rencana:     [245,166,35],  // oranye
+    kendala:     [220,53,69]    // merah
+  };
+
+  function drawGanttChartToPDF(doc, data, startY) {
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var margin = 32;
+    var weeks = buildWeeks(data.min, data.max);
+    var nWeeks = weeks.length;
+    var rangeStart = weeks[0].start;
+    var rangeEnd = weeks[nWeeks - 1].end;
+    var totalDays = diffDays(rangeStart, rangeEnd) + 1;
+
+    var labelW = 110;                                   // lebar kolom label seksi
+    var chartX = margin + labelW;
+    var chartW = pageW - margin - chartX;               // area batang (skala waktu penuh)
+    var headerH = 28;                                   // tinggi baris header
+    var barH = 12;                                      // tinggi tiap batang tugas
+    var barGap = 5;                                     // jarak antar batang dalam satu seksi
+    var rowPadV = 6;                                    // padding vertikal tiap baris seksi
+
+    // Tentukan mode header lebih dulu (mingguan vs bulanan).
+    var useMonthly = (chartW / nWeeks) < 22;
+
+    // Dalam mode BULANAN, rentangkan sumbu ke AWAL & AKHIR bulan penuh agar bulan terakhir
+    // (mis. Januari 2027 tempat deadline berada) mendapat kolom penuh yang berlabel,
+    // sehingga deadline paling akhir selalu terlihat jelas beserta labelnya.
+    if (useMonthly) {
+      rangeStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      rangeEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 0); // hari terakhir bulan
+      totalDays = diffDays(rangeStart, rangeEnd) + 1;
+    }
+
+    // Konversi tanggal -> posisi X pada sumbu waktu (kontinu, berbasis hari).
+    // Inilah yang memastikan SEMUA tanggal (termasuk deadline paling akhir spt 10 Jan 2027)
+    // dipetakan dengan benar di dalam area chart.
+    function dateToX(d) {
+      var off = diffDays(rangeStart, d);
+      if (off < 0) off = 0;
+      if (off > totalDays) off = totalDays;
+      return chartX + (off / totalDays) * chartW;
+    }
+
+    // ---- Bangun sel header adaptif ----
+    // Tiga tingkat granularitas agar seluruh rentang SELALU tampil & terbaca:
+    //   - mingguan  : rentang pendek
+    //   - bulanan   : rentang menengah (mis. Agu 2025 s/d Jan 2027)
+    //   - tahunan   : rentang sangat panjang (>~24 bulan) agar label tidak tumpang tindih
+    var moNames = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    var headCells = [];
+    var headerMode = 'week';
+    if (!useMonthly) {
+      headerMode = 'week';
+      weeks.forEach(function(w){
+        headCells.push({ start: w.start, end: w.end, label: fmtShort(w.start) });
+      });
+    } else {
+      // Hitung jumlah bulan dalam rentang untuk memutuskan bulanan vs tahunan.
+      var monthsSpan = (rangeEnd.getFullYear() - rangeStart.getFullYear()) * 12 +
+                       (rangeEnd.getMonth() - rangeStart.getMonth()) + 1;
+      var perMonthW = chartW / Math.max(monthsSpan, 1);
+      if (perMonthW >= 26) {
+        // ---- Bulanan ----
+        headerMode = 'month';
+        var cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+        var guard = 0;
+        while (cur <= rangeEnd && guard < 240) {
+          var mStart = (cur < rangeStart) ? rangeStart : cur;
+          var nextMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+          var mEnd = (addDays(nextMonth, -1) > rangeEnd) ? rangeEnd : addDays(nextMonth, -1);
+          // Label pendek: "Agu 25" agar muat pada kolom sempit.
+          headCells.push({ start: new Date(mStart), end: new Date(mEnd),
+            label: moNames[cur.getMonth()] + ' ' + String(cur.getFullYear()).slice(-2) });
+          cur = nextMonth;
+          guard++;
+        }
+      } else {
+        // ---- Tahunan ---- (rentang sangat panjang)
+        headerMode = 'year';
+        var yStart = rangeStart.getFullYear();
+        var yEnd = rangeEnd.getFullYear();
+        for (var yy = yStart; yy <= yEnd; yy++) {
+          var ys = (yy === yStart) ? rangeStart : new Date(yy, 0, 1);
+          var ye = (yy === yEnd) ? rangeEnd : new Date(yy, 11, 31);
+          headCells.push({ start: new Date(ys), end: new Date(ye), label: String(yy) });
+        }
+      }
+    }
+
+    var y = startY;
+
+    // ---- Header waktu (dipakai ulang tiap halaman) ----
+    function drawTimeHeader(atY) {
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(244, 247, 251);
+      doc.rect(margin, atY, labelW, headerH, 'FD');
+      doc.setFontSize(7.5); doc.setTextColor(26, 43, 76);
+      doc.text('Seksi \\ Waktu', margin + 5, atY + headerH / 2 + 2.5);
+
+      headCells.forEach(function(c){
+        var cxStart = dateToX(c.start);
+        var cxEnd = dateToX(addDays(c.end, 1)); // akhir eksklusif agar sel menutup penuh
+        var cw = Math.max(cxEnd - cxStart, 1);
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(244, 247, 251);
+        doc.rect(cxStart, atY, cw, headerH, 'FD');
+        doc.setFontSize(headerMode === 'year' ? 7.5 : (headerMode === 'month' ? 6.5 : 6));
+        doc.setTextColor(60, 72, 100);
+        // Tampilkan label bila selnya cukup lebar (hindari tumpang tindih).
+        var minLabelW = (headerMode === 'year') ? 24 : (headerMode === 'month' ? 16 : 24);
+        if (cw >= minLabelW) {
+          doc.text(c.label, cxStart + cw / 2, atY + headerH / 2 + 2, { align: 'center', maxWidth: cw - 2 });
+        }
+      });
+      return atY + headerH;
+    }
+
+    // ---- Garis grid vertikal sesuai batas sel header ----
+    function drawGridLines(atY, h) {
+      doc.setDrawColor(238, 242, 247);
+      // garis awal tiap sel
+      headCells.forEach(function(c){
+        var gx = dateToX(c.start);
+        doc.line(gx, atY, gx, atY + h);
+      });
+      // garis penutup di ujung kanan
+      doc.line(chartX + chartW, atY, chartX + chartW, atY + h);
+    }
+
+    y = drawTimeHeader(y);
+
+    // ---- Baris per seksi ----
+    for (var r = 0; r < data.rows.length; r++) {
+      var row = data.rows[r];
+      var items = row.items.slice().sort(function(a, b){ return a.start - b.start; });
+      var rowH = Math.max(barH + rowPadV * 2, items.length * (barH + barGap) - barGap + rowPadV * 2);
+
+      // Ganti halaman bila baris tak muat
+      if (y + rowH > pageH - margin) {
+        doc.addPage();
+        y = margin + 10;
+        y = drawTimeHeader(y);
+      }
+
+      // Latar baris (zebra) + label seksi
+      if (r % 2 === 1) { doc.setFillColor(250, 250, 250); doc.rect(chartX, y, chartW, rowH, 'F'); }
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(255, 255, 255);
+      doc.rect(margin, y, labelW, rowH, 'FD');
+      doc.setFontSize(7.5); doc.setTextColor(26, 43, 76);
+      doc.text(String(row.name), margin + 5, y + rowH / 2 + 2.5, { maxWidth: labelW - 8 });
+
+      drawGridLines(y, rowH);
+
+      // Batang tugas
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k];
+        var bx = dateToX(it.start);
+        var bxEnd = dateToX(addDays(it.end, 1)); // akhir eksklusif -> batang menutup hari deadline
+        var bw = Math.max(bxEnd - bx, 3);
+        // Jangan biarkan batang keluar dari area chart
+        if (bx + bw > chartX + chartW) bw = (chartX + chartW) - bx;
+        var by = y + rowPadV + k * (barH + barGap);
+        var col = GANTT_PDF_COLORS[it.status] || GANTT_PDF_COLORS.rencana;
+
+        doc.setFillColor(col[0], col[1], col[2]);
+        if (doc.roundedRect) { doc.roundedRect(bx, by, bw, barH, 3, 3, 'F'); }
+        else { doc.rect(bx, by, bw, barH, 'F'); }
+
+        // Label tugas
+        var labelTxt = it.desc + (it.pic && it.pic !== '-' ? ' (' + it.pic + ')' : '');
+        doc.setFontSize(6);
+        // Potong label menjadi SATU baris agar tidak membungkus & terpotong ke bawah.
+        function fitOneLine(txt, maxW) {
+          if (maxW <= 4) return '';
+          if (doc.getTextWidth(txt) <= maxW) return txt;
+          var s = txt;
+          while (s.length > 1 && doc.getTextWidth(s + '…') > maxW) { s = s.slice(0, -1); }
+          return s + '…';
+        }
+        var textInside = bw > 44;
+        if (textInside) {
+          if (it.status === 'rencana') doc.setTextColor(74, 53, 0); else doc.setTextColor(255, 255, 255);
+          doc.text(fitOneLine(labelTxt, bw - 6), bx + 4, by + barH / 2 + 2);
+        } else {
+          // Batang pendek: tulis label di SISI yang tidak terpotong tepi chart.
+          doc.setTextColor(60, 72, 100);
+          var spaceRight = (chartX + chartW) - (bx + bw);
+          var estTextW = doc.getTextWidth(labelTxt);
+          if (spaceRight >= estTextW + 6 || spaceRight >= 60) {
+            // cukup ruang di kanan
+            doc.text(fitOneLine(labelTxt, spaceRight - 4), bx + bw + 3, by + barH / 2 + 2);
+          } else {
+            // dekat tepi kanan -> tulis di KIRI batang, rata kanan
+            var spaceLeft = bx - chartX - 3;
+            doc.text(fitOneLine(labelTxt, spaceLeft), bx - 3, by + barH / 2 + 2, { align: 'right' });
+          }
+        }
+
+        // Bintang milestone di ujung deadline (tetap di dalam area chart)
+        var msX = dateToX(addDays(it.end, 1));
+        if (msX > chartX + chartW - 3) msX = chartX + chartW - 3;
+        doc.setTextColor(220, 53, 69);
+        doc.setFontSize(9);
+        doc.text('\u2605', msX, by + barH / 2 + 3, { align: 'center' });
+      }
+
+      // Garis "hari ini"
+      var today = stripTime(new Date());
+      if (today >= rangeStart && today <= rangeEnd) {
+        var tX = dateToX(today);
+        doc.setDrawColor(220, 53, 69);
+        doc.setLineWidth(1);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.line(tX, y, tX, y + rowH);
+        doc.setLineDashPattern([], 0);
+        doc.setLineWidth(0.2);
+      }
+
+      y += rowH;
+    }
+
+    // Bingkai luar chart
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(margin, startY, pageW - margin * 2, y - startY);
+
+    return y;
+  }
+
+  // Menggambar legenda warna status untuk chart PDF.
+  function drawGanttLegendPDF(doc, atY) {
+    var margin = 32;
+    var items = [
+      ['Selesai', GANTT_PDF_COLORS.selesai],
+      ['Berlangsung', GANTT_PDF_COLORS.berlangsung],
+      ['Rencana', GANTT_PDF_COLORS.rencana],
+      ['Kendala', GANTT_PDF_COLORS.kendala]
+    ];
+    var x = margin;
+    doc.setFontSize(7.5);
+    items.forEach(function(it){
+      doc.setFillColor(it[1][0], it[1][1], it[1][2]);
+      doc.rect(x, atY - 6, 14, 8, 'F');
+      doc.setTextColor(60, 72, 100);
+      doc.text(it[0], x + 18, atY);
+      x += 18 + doc.getTextWidth(it[0]) + 16;
+    });
+    // Milestone
+    doc.setTextColor(220, 53, 69); doc.setFontSize(10);
+    doc.text('\u2605', x, atY + 1);
+    doc.setTextColor(60, 72, 100); doc.setFontSize(7.5);
+    doc.text('Milestone (deadline)', x + 10, atY);
+    return atY + 12;
+  }
 
   // Export PDF sederhana memakai jsPDF (sudah dimuat di aplikasi)
   if (btnExport) btnExport.addEventListener('click', function(){
@@ -7803,8 +8368,25 @@
       doc.text('Timeline Proyek - Jadwal & Milestone', margin, 40);
       doc.setFontSize(9); doc.setTextColor(100);
       doc.text('Dibuat: ' + new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}), margin, 56);
+      // Penanda versi kecil (kanan atas) agar mudah memastikan versi kode yang menghasilkan PDF.
+      doc.setFontSize(7); doc.setTextColor(160);
+      doc.text('chart v2 (adaptif: minggu/bulan/tahun)', pw - margin, 40, { align: 'right' });
+      doc.setTextColor(100);
 
+      // 1) Legenda + CHART GANTT (grafik batang) — inilah tampilan grafis yang diminta.
+      var afterLegendY = drawGanttLegendPDF(doc, 72);
+      try {
+        drawGanttChartToPDF(doc, data, afterLegendY + 6);
+      } catch (chartErr) {
+        console.error('[Timeline] Gagal menggambar chart PDF:', chartErr);
+        // Bila chart gagal, tetap lanjut ke tabel agar export tidak batal total.
+      }
+
+      // 2) TABEL rincian di halaman baru.
       if (doc.autoTable) {
+        doc.addPage();
+        doc.setFontSize(13); doc.setTextColor(26,43,76);
+        doc.text('Rincian Tugas', margin, 40);
         var body = [];
         data.rows.forEach(function(row){
           row.items.forEach(function(it){
@@ -7819,7 +8401,7 @@
           });
         });
         doc.autoTable({
-          startY: 70, margin: { left: margin, right: margin },
+          startY: 52, margin: { left: margin, right: margin },
           head: [['Seksi','Tugas','PIC','Status','Periode','Milestone/Deadline']],
           body: body,
           styles: { fontSize: 8, cellPadding: 4 },
