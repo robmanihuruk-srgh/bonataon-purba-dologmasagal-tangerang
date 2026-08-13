@@ -1059,14 +1059,17 @@
       <div class="form-group">
         <label>Tambah Anggota</label>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <input type="text" id="teamMemberSectionInput" placeholder="Sie / Seksi (mis. Acara)" list="teamSectionSuggestions" style="flex:1; min-width: 150px;">
+          <datalist id="teamSectionSuggestions"></datalist>
           <input type="text" id="teamMemberNameInput" placeholder="Nama Lengkap" style="flex:1; min-width: 150px;">
-          <input type="email" id="teamMemberEmailInput" placeholder="Email" style="flex:1; min-width: 150px;">
+          <input type="email" id="teamMemberEmailInput" placeholder="Email (opsional)" style="flex:1; min-width: 150px;">
           <select id="teamMemberRoleInput" class="team-role-select">
             <option value="anggota">Anggota</option>
             <option value="koordinator">Koordinator</option>
           </select>
           <button class="btn-primary" id="addTeamMemberBtn"><i class="fas fa-plus"></i> Tambah</button>
         </div>
+        <small style="color: var(--color-text-light); display:block; margin-top:6px;"><i class="fas fa-info-circle"></i> Ketik nama Sie yang sama untuk mengelompokkan beberapa orang ke dalam satu Sie. Kosongkan bila anggota tidak masuk Sie tertentu.</small>
       </div>
       <div class="member-list" id="teamMemberList" style="max-height: 300px;">
         <div class="team-empty-state"><i class="fas fa-users"></i>Belum ada anggota dalam tim ini.</div>
@@ -2278,17 +2281,25 @@
           <div style="display: flex; flex-direction: column; gap: 8px;">`;
 
         if (team.members && team.members.length > 0) {
-          team.members.forEach(member => {
-            const roleClass = member.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
-            const roleLabel = member.role === 'koordinator' ? 'Koordinator' : 'Anggota';
-            inner += `<div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
-              <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(member.name || member.email || '?').charAt(0).toUpperCase()}</div>
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary);">${escapeHtml(member.name || 'Tanpa Nama')}</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(member.email || '-')}</div>
-              </div>
-              <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem;">${roleLabel}</span>
+          const groups = groupTeamMembersBySection(team.members);
+          groups.forEach(group => {
+            // Header Sie di dalam kartu
+            inner += `<div style="display:flex; align-items:center; gap:6px; margin-top:6px; padding:4px 8px; background:var(--color-bg-light); border-radius:6px;">
+              <i class="fas fa-layer-group" style="color: var(--color-primary); font-size:0.8rem;"></i>
+              <span style="font-weight:700; font-size:0.82rem; color:var(--color-secondary);">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
             </div>`;
+            group.members.forEach(member => {
+              const roleClass = member.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
+              const roleLabel = member.role === 'koordinator' ? 'Koordinator' : 'Anggota';
+              inner += `<div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--color-border);">
+                <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(member.name || member.email || '?').charAt(0).toUpperCase()}</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-secondary);">${escapeHtml(member.name || 'Tanpa Nama')}</div>
+                  <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(member.email || '-')}</div>
+                </div>
+                <span class="member-role-badge ${roleClass}" style="font-size: 0.7rem;">${roleLabel}</span>
+              </div>`;
+            });
           });
         } else {
           inner += `<div style="text-align: center; color: var(--color-text-light); font-size: 0.85rem; padding: 12px;"><i class="fas fa-info-circle"></i> Belum ada anggota dalam tim ini.</div>`;
@@ -6509,6 +6520,7 @@
         document.getElementById('teamMembersModal').dataset.teamId = teamId;
         document.getElementById('teamMembersModalTitle').innerHTML = `<i class="fas fa-user-friends"></i> Kelola Anggota - ${escapeHtml(team.name)}`;
         document.getElementById('teamMembersModal').classList.add('active');
+        document.getElementById('teamMemberSectionInput').value = '';
         document.getElementById('teamMemberNameInput').value = '';
         document.getElementById('teamMemberEmailInput').value = '';
         document.getElementById('teamMemberRoleInput').value = 'anggota';
@@ -6516,53 +6528,114 @@
         renderTeamMemberList(team);
       };
 
+      // Kelompokkan anggota tim berdasarkan Sie/Seksi.
+      // Mengembalikan array [{ section: 'Nama Sie'|'', members: [...] }] terurut:
+      // Sie ber-nama diurutkan alfabetis, grup "Tanpa Sie" diletakkan paling akhir.
+      function groupTeamMembersBySection(members) {
+        const map = new Map();
+        (members || []).forEach(m => {
+          const key = (m.section || '').trim();
+          if (!map.has(key)) map.set(key, []);
+          map.get(key).push(m);
+        });
+        const groups = Array.from(map.entries()).map(([section, list]) => {
+          // Dalam satu Sie: koordinator dulu, lalu alfabetis nama
+          const sortedList = [...list].sort((a, b) => {
+            if (a.role === 'koordinator' && b.role !== 'koordinator') return -1;
+            if (a.role !== 'koordinator' && b.role === 'koordinator') return 1;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+          return { section, members: sortedList };
+        });
+        groups.sort((a, b) => {
+          if (a.section === '' && b.section !== '') return 1;   // tanpa sie ke bawah
+          if (a.section !== '' && b.section === '') return -1;
+          return a.section.localeCompare(b.section);
+        });
+        return groups;
+      }
+
+      // Kumpulkan daftar nama Sie unik untuk saran (datalist) input.
+      function refreshTeamSectionSuggestions(team) {
+        const dl = document.getElementById('teamSectionSuggestions');
+        if (!dl) return;
+        const names = Array.from(new Set((team.members || [])
+          .map(m => (m.section || '').trim())
+          .filter(Boolean)));
+        dl.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">`).join('');
+      }
+
       function renderTeamMemberList(team) {
         const listDiv = document.getElementById('teamMemberList');
+        refreshTeamSectionSuggestions(team);
+
         if (!team.members || team.members.length === 0) {
           listDiv.innerHTML = '<div class="team-empty-state"><i class="fas fa-users"></i>Belum ada anggota dalam tim ini.</div>';
           return;
         }
 
         listDiv.innerHTML = '';
+        const groups = groupTeamMembersBySection(team.members);
 
-        // Sort: koordinators first, then alphabetically by name
-        const sorted = [...team.members].sort((a, b) => {
-          if (a.role === 'koordinator' && b.role !== 'koordinator') return -1;
-          if (a.role !== 'koordinator' && b.role === 'koordinator') return 1;
-          return (a.name || '').localeCompare(b.name || '');
-        });
+        groups.forEach(group => {
+          // Header Sie
+          const header = document.createElement('div');
+          header.style.cssText = 'display:flex; align-items:center; gap:8px; margin:14px 0 6px; padding:6px 10px; background:var(--color-bg-light); border-radius:6px;';
+          const koordCount = group.members.filter(m => m.role === 'koordinator').length;
+          header.innerHTML = `
+            <i class="fas fa-layer-group" style="color: var(--color-primary);"></i>
+            <span style="font-weight:700; color:var(--color-secondary);">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
+            <span style="font-size:0.72rem; color:var(--color-text-light);">(${group.members.length} orang${koordCount ? ', ' + koordCount + ' koordinator' : ''})</span>`;
+          listDiv.appendChild(header);
 
-        sorted.forEach((m, index) => {
-          const item = document.createElement('div');
-          item.className = 'member-item';
-          item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);';
+          group.members.forEach(m => {
+            // Identifier stabil (tidak berbasis index) untuk aksi ubah/hapus.
+            const memberKey = (m.email || '') + '||' + (m.name || '') + '||' + (m.section || '');
+            const keyEsc = memberKey.replace(/'/g, "\\'");
 
-          const roleClass = m.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
-          const roleLabel = m.role === 'koordinator' ? 'Koordinator' : 'Anggota';
+            const item = document.createElement('div');
+            item.className = 'member-item';
+            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);';
 
-          item.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(m.name || '?').charAt(0).toUpperCase()}</div>
-              <div>
-                <div style="font-weight: 600; color: var(--color-secondary);">${escapeHtml(m.name || 'Tanpa Nama')}</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(m.email || '-')}</div>
-                <span class="member-role-badge ${roleClass}" style="margin-top: 4px;">${roleLabel}</span>
+            const roleClass = m.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
+            const roleLabel = m.role === 'koordinator' ? 'Koordinator' : 'Anggota';
+            const nextRole = m.role === 'koordinator' ? 'anggota' : 'koordinator';
+
+            item.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(m.name || '?').charAt(0).toUpperCase()}</div>
+                <div>
+                  <div style="font-weight: 600; color: var(--color-secondary);">${escapeHtml(m.name || 'Tanpa Nama')}</div>
+                  <div style="font-size: 0.8rem; color: var(--color-text-light);">${escapeHtml(m.email || '-')}</div>
+                  <span class="member-role-badge ${roleClass}" style="margin-top: 4px;">${roleLabel}</span>
+                </div>
               </div>
-            </div>
-            <div style="display: flex; gap: 6px;">
-              <button onclick="changeTeamMemberRole('${team.id}', ${index}, '${m.role === 'koordinator' ? 'anggota' : 'koordinator'}')" 
-                style="background: #f8fafc; border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--color-text);"
-                title="Ubah jadi ${m.role === 'koordinator' ? 'Anggota' : 'Koordinator'}">
-                <i class="fas fa-exchange-alt"></i> ${m.role === 'koordinator' ? 'Jadikan Anggota' : 'Jadikan Koordinator'}
-              </button>
-              <button onclick="removeTeamMember('${team.id}', '${m.email || m.name}')" 
-                style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          `;
-          listDiv.appendChild(item);
+              <div style="display: flex; gap: 6px;">
+                <button onclick="changeTeamMemberRoleByKey('${team.id}', '${keyEsc}', '${nextRole}')" 
+                  style="background: #f8fafc; border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--color-text);"
+                  title="Ubah jadi ${nextRole === 'koordinator' ? 'Koordinator' : 'Anggota'}">
+                  <i class="fas fa-exchange-alt"></i> ${m.role === 'koordinator' ? 'Jadikan Anggota' : 'Jadikan Koordinator'}
+                </button>
+                <button onclick="moveTeamMemberSection('${team.id}', '${keyEsc}')" 
+                  style="background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"
+                  title="Pindah Sie">
+                  <i class="fas fa-arrows-alt"></i>
+                </button>
+                <button onclick="removeTeamMemberByKey('${team.id}', '${keyEsc}')" 
+                  style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `;
+            listDiv.appendChild(item);
+          });
         });
+      }
+
+      // Cari index anggota berdasarkan key stabil (email||name||section).
+      function findTeamMemberIndexByKey(team, key) {
+        return (team.members || []).findIndex(m =>
+          ((m.email || '') + '||' + (m.name || '') + '||' + (m.section || '')) === key);
       }
 
       window.changeTeamMemberRole = async (teamId, memberIndex, newRole) => {
@@ -6605,6 +6678,67 @@
         }
       };
 
+      // ===== Aksi anggota tim berbasis key stabil (mendukung pengelompokan per Sie) =====
+      window.changeTeamMemberRoleByKey = async (teamId, key, newRole) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) return;
+        const updatedMembers = [...team.members];
+        updatedMembers[idx] = { ...updatedMembers[idx], role: newRole };
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers, memberEmails: updatedMembers.map(m => m.email).filter(Boolean) });
+          team.members = updatedMembers;
+          team.memberEmails = updatedMembers.map(m => m.email).filter(Boolean);
+          renderTeamMemberList(team);
+          renderTeamList();
+          if (currentTeamId === teamId) renderTeamDetail(team);
+        } catch (error) {
+          alert('Gagal mengubah role: ' + error.message);
+        }
+      };
+
+      window.removeTeamMemberByKey = async (teamId, key) => {
+        if (!confirm('Hapus anggota ini dari tim?')) return;
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) return;
+        const updatedMembers = team.members.filter((_, i) => i !== idx);
+        const updatedMemberEmails = updatedMembers.map(m => m.email).filter(Boolean);
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers, memberEmails: updatedMemberEmails });
+          team.members = updatedMembers;
+          team.memberEmails = updatedMemberEmails;
+          renderTeamMemberList(team);
+          renderTeamList();
+          if (currentTeamId === teamId) renderTeamDetail(team);
+        } catch (error) {
+          alert('Gagal menghapus anggota: ' + error.message);
+        }
+      };
+
+      window.moveTeamMemberSection = async (teamId, key) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) return;
+        const current = team.members[idx].section || '';
+        const nextSection = prompt('Pindahkan ke Sie/Seksi mana? (kosongkan untuk "Tanpa Sie")', current);
+        if (nextSection === null) return; // batal
+        const updatedMembers = [...team.members];
+        updatedMembers[idx] = { ...updatedMembers[idx], section: nextSection.trim() };
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers });
+          team.members = updatedMembers;
+          renderTeamMemberList(team);
+          renderTeamList();
+          if (currentTeamId === teamId) renderTeamDetail(team);
+        } catch (error) {
+          alert('Gagal memindahkan Sie: ' + error.message);
+        }
+      };
+
       document.getElementById('addTeamMemberBtn')?.addEventListener('click', async () => {
         const teamId = document.getElementById('teamMembersModal').dataset.teamId;
         const team = teams.find(t => t.id === teamId);
@@ -6613,6 +6747,7 @@
         const name = document.getElementById('teamMemberNameInput').value.trim();
         const email = document.getElementById('teamMemberEmailInput').value.trim().toLowerCase();
         const role = document.getElementById('teamMemberRoleInput').value;
+        const section = document.getElementById('teamMemberSectionInput').value.trim();
 
         if (!name) return alert('Nama anggota harus diisi');
 
@@ -6625,7 +6760,7 @@
           }
         }
 
-        const newMember = { name, email: email || '', role, uid: memberUid };
+        const newMember = { name, email: email || '', role, uid: memberUid, section: section || '' };
         const updatedMembers = [...(team.members || []), newMember];
 
         // Update memberEmails: gabungkan email lama + email baru (unik, tidak duplikat, lowercase)
@@ -6641,10 +6776,13 @@
           document.getElementById('teamMemberNameInput').value = '';
           document.getElementById('teamMemberEmailInput').value = '';
           document.getElementById('teamMemberRoleInput').value = 'anggota';
+          // Sengaja TIDAK mengosongkan input Sie agar mudah menambah beberapa
+          // orang berturut-turut ke dalam Sie yang sama.
           team.members = updatedMembers;
           team.memberEmails = updatedMemberEmails;
           renderTeamMemberList(team);
           renderTeamList();
+          document.getElementById('teamMemberNameInput').focus();
           if (currentTeamId === teamId) renderTeamDetail(team);
 
           // NOTIFIKASI: beri tahu user yang diundang sebagai anggota tim
