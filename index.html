@@ -5094,17 +5094,28 @@
           } catch (e) {}
           return fallback;
         };
+        // Normalisasi spasi agar cetakan PDF sama dengan tampilan aplikasi:
+        //  - ubah non-breaking space (\u00A0) menjadi spasi biasa,
+        //  - ubah tab/newline internal menjadi spasi,
+        //  - rapatkan spasi berturut-turut menjadi satu (browser juga menampilkannya begitu).
+        const normalizeSpaces = (s) => (s || '')
+          .replace(/\u00A0/g, ' ')
+          .replace(/[\t\r\n]+/g, ' ')
+          .replace(/ {2,}/g, ' ');
         (function flatten(node, style) {
           node.childNodes.forEach(child => {
             if (child.nodeType === 3) {
-              if (child.textContent) tokens.push({ type: 'text', text: child.textContent, bold: style.bold, italic: style.italic, underline: style.underline, align: style.align });
+              const txt = normalizeSpaces(child.textContent);
+              if (txt) tokens.push({ type: 'text', text: txt, bold: style.bold, italic: style.italic, underline: style.underline, align: style.align });
             } else if (child.nodeType === 1) {
               const tag = child.tagName;
               if (tag === 'BR') {
                 tokens.push({ type: 'break', align: style.align });
               } else if (tag === 'DIV') {
                 const blockAlign = readAlign(child, style.align);
-                if (tokens.length > 0) tokens.push({ type: 'break', align: blockAlign });
+                // Setiap DIV memulai baris baru. Tandai break sebagai 'block' agar
+                // bisa dibedakan dari <br> saat merapikan baris kosong berlebih.
+                if (tokens.length > 0) tokens.push({ type: 'break', block: true, align: blockAlign });
                 flatten(child, { bold: style.bold, italic: style.italic, underline: style.underline, align: blockAlign });
               } else {
                 const s = { bold: style.bold, italic: style.italic, underline: style.underline, align: readAlign(child, style.align) };
@@ -5116,7 +5127,28 @@
             }
           });
         })(container, { bold: false, italic: false, underline: false, align: 'left' });
-        return tokens;
+
+        // === Rapikan token break berturut-turut ===
+        // Masalah: satu baris kosong di aplikasi (mis. <div><br></div>) dapat menghasilkan
+        // 2-3 token break sehingga jarak di PDF jadi berlebihan atau, sebaliknya, batas div
+        // yang seharusnya memisah dua baris malah tergabung. Aturan perapihan:
+        //  - Hapus break di paling awal (sebelum ada teks).
+        //  - Batasi maksimum 2 break berturut-turut (1 = pindah baris, 2 = satu baris kosong).
+        const cleaned = [];
+        let runBreaks = 0;
+        tokens.forEach(tok => {
+          if (tok.type === 'break') {
+            if (cleaned.length === 0) return; // buang break sebelum teks pertama
+            runBreaks++;
+            if (runBreaks <= 2) cleaned.push(tok);
+            return;
+          }
+          runBreaks = 0;
+          cleaned.push(tok);
+        });
+        // Buang break menggantung di akhir
+        while (cleaned.length && cleaned[cleaned.length - 1].type === 'break') cleaned.pop();
+        return cleaned;
       }
 
       function pdfFontStyleForToken(tok) {
