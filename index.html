@@ -1105,6 +1105,37 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT ANGGOTA TIM -->
+  <div class="modal" id="editTeamMemberModal">
+    <div class="modal-content" style="width: 480px; max-width: 95%;">
+      <h3><i class="fas fa-user-edit"></i> Edit Anggota</h3>
+      <div class="form-group">
+        <label>Sie / Seksi</label>
+        <input type="text" id="editMemberSectionInput" placeholder="Sie / Seksi (mis. Acara)" list="teamSectionSuggestions">
+        <small style="color: var(--color-text-light); display:block; margin-top:4px;"><i class="fas fa-info-circle"></i> Kosongkan bila anggota tidak masuk Sie tertentu.</small>
+      </div>
+      <div class="form-group">
+        <label>Nama Lengkap</label>
+        <input type="text" id="editMemberNameInput" placeholder="Nama Lengkap">
+      </div>
+      <div class="form-group">
+        <label>Email (opsional)</label>
+        <input type="email" id="editMemberEmailInput" placeholder="Email (opsional)">
+      </div>
+      <div class="form-group">
+        <label>Peran</label>
+        <select id="editMemberRoleInput" class="team-role-select" style="width:100%;">
+          <option value="anggota">Anggota</option>
+          <option value="koordinator">Koordinator</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancelEditTeamMember">Batal</button>
+        <button class="btn-primary" id="saveEditTeamMember"><i class="fas fa-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
 <div class="sidebar">
     <div class="sidebar-header">
       <!-- Tombol toggle untuk landscape mode (disembunyikan di portrait/desktop via CSS) -->
@@ -6881,10 +6912,12 @@
           const header = document.createElement('div');
           header.style.cssText = 'display:flex; align-items:center; gap:8px; margin:14px 0 6px; padding:6px 10px; background:var(--color-bg-light); border-radius:6px;';
           const koordCount = group.members.filter(m => m.role === 'koordinator').length;
+          const sectionEsc = (group.section || '').replace(/'/g, "\\'");
           header.innerHTML = `
             <i class="fas fa-layer-group" style="color: var(--color-primary);"></i>
             <span style="font-weight:700; color:var(--color-secondary);">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
-            <span style="font-size:0.72rem; color:var(--color-text-light);">(${group.members.length} orang${koordCount ? ', ' + koordCount + ' koordinator' : ''})</span>`;
+            <span style="font-size:0.72rem; color:var(--color-text-light);">(${group.members.length} orang${koordCount ? ', ' + koordCount + ' koordinator' : ''})</span>
+            ${group.section ? `<button onclick="renameTeamSection('${team.id}', '${sectionEsc}')" title="Ubah nama Sie ini" style="margin-left:auto; background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; padding:3px 9px; border-radius:4px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-pen"></i> Ubah Nama Sie</button>` : ''}`;
           listDiv.appendChild(header);
 
           group.members.forEach(m => {
@@ -6914,6 +6947,11 @@
                   style="background: #f8fafc; border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--color-text);"
                   title="Ubah jadi ${nextRole === 'koordinator' ? 'Koordinator' : 'Anggota'}">
                   <i class="fas fa-exchange-alt"></i> ${m.role === 'koordinator' ? 'Jadikan Anggota' : 'Jadikan Koordinator'}
+                </button>
+                <button onclick="openEditTeamMemberModal('${team.id}', '${keyEsc}')" 
+                  style="background: #ecfdf5; border: 1px solid #6ee7b7; color: #047857; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"
+                  title="Edit anggota (nama, Sie, email, peran)">
+                  <i class="fas fa-user-edit"></i> Edit
                 </button>
                 <button onclick="moveTeamMemberSection('${team.id}', '${keyEsc}')" 
                   style="background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"
@@ -7017,6 +7055,44 @@
         }
       };
 
+      // Ubah nama satu Sie/Seksi: memperbarui field `section` untuk SEMUA anggota
+      // di dalam Sie tersebut sekaligus. Berbasis nama Sie (bukan index).
+      window.renameTeamSection = async (teamId, oldSection) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const oldTrim = (oldSection || '').trim();
+        const nextRaw = prompt(`Ubah nama Sie "${oldTrim}" menjadi:`, oldTrim);
+        if (nextRaw === null) return; // batal
+        const nextTrim = nextRaw.trim();
+        if (!nextTrim) { alert('Nama Sie tidak boleh kosong. Gunakan "Pindah Sie" per anggota jika ingin mengosongkan.'); return; }
+        if (nextTrim === oldTrim) return; // tidak berubah
+
+        // Cek apakah nama tujuan sudah dipakai Sie lain -> tawarkan penggabungan.
+        const existingSections = new Set((team.members || [])
+          .map(m => (m.section || '').trim())
+          .filter(Boolean));
+        existingSections.delete(oldTrim);
+        if (existingSections.has(nextTrim)) {
+          if (!confirm(`Sie "${nextTrim}" sudah ada. Gabungkan anggota "${oldTrim}" ke dalamnya?`)) return;
+        }
+
+        const updatedMembers = team.members.map(m =>
+          (m.section || '').trim() === oldTrim ? { ...m, section: nextTrim } : m
+        );
+
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers });
+          team.members = updatedMembers;
+          renderTeamMemberList(team);
+          if (typeof renderTeamList === 'function') renderTeamList();
+          if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
+          const assignedCard = document.getElementById('assigned-team-card-' + teamId);
+          if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+        } catch (error) {
+          alert('Gagal mengubah nama Sie: ' + error.message);
+        }
+      };
+
       window.moveTeamMemberSection = async (teamId, key) => {
         const team = teams.find(t => t.id === teamId);
         if (!team || !team.members) return;
@@ -7037,6 +7113,83 @@
           alert('Gagal memindahkan Sie: ' + error.message);
         }
       };
+
+      // ===== Edit anggota tim (nama, Sie, email, peran) via modal =====
+      window.openEditTeamMemberModal = (teamId, key) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) return;
+        const m = team.members[idx];
+        const modal = document.getElementById('editTeamMemberModal');
+        modal.dataset.teamId = teamId;
+        modal.dataset.memberKey = key;
+        document.getElementById('editMemberSectionInput').value = m.section || '';
+        document.getElementById('editMemberNameInput').value = m.name || '';
+        document.getElementById('editMemberEmailInput').value = m.email || '';
+        document.getElementById('editMemberRoleInput').value = m.role === 'koordinator' ? 'koordinator' : 'anggota';
+        refreshTeamSectionSuggestions(team);
+        modal.classList.add('active');
+        setTimeout(() => document.getElementById('editMemberNameInput').focus(), 50);
+      };
+
+      document.getElementById('cancelEditTeamMember')?.addEventListener('click', () => {
+        document.getElementById('editTeamMemberModal').classList.remove('active');
+      });
+
+      document.getElementById('saveEditTeamMember')?.addEventListener('click', async () => {
+        const modal = document.getElementById('editTeamMemberModal');
+        const teamId = modal.dataset.teamId;
+        const key = modal.dataset.memberKey;
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+        const idx = findTeamMemberIndexByKey(team, key);
+        if (idx < 0) { alert('Anggota tidak ditemukan (data mungkin sudah berubah).'); return; }
+
+        const name = document.getElementById('editMemberNameInput').value.trim();
+        const section = document.getElementById('editMemberSectionInput').value.trim();
+        const email = document.getElementById('editMemberEmailInput').value.trim().toLowerCase();
+        const role = document.getElementById('editMemberRoleInput').value === 'koordinator' ? 'koordinator' : 'anggota';
+
+        if (!name) { alert('Nama tidak boleh kosong.'); return; }
+
+        const old = team.members[idx];
+        // Jika email berubah dan tidak kosong, coba temukan UID pengguna terdaftar.
+        let memberUid = old.uid || '';
+        if (email && email !== (old.email || '')) {
+          try {
+            const userLookup = await lookupUserByEmail(email);
+            memberUid = userLookup ? userLookup.uid : '';
+          } catch (e) { memberUid = ''; }
+        } else if (!email) {
+          memberUid = '';
+        }
+
+        const updatedMembers = [...team.members];
+        updatedMembers[idx] = { ...old, name, section, email: email || '', role, uid: memberUid };
+        const updatedMemberEmails = Array.from(new Set(updatedMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean)));
+
+        const saveBtn = document.getElementById('saveEditTeamMember');
+        const origHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+        try {
+          await db.collection('teams').doc(teamId).update({ members: updatedMembers, memberEmails: updatedMemberEmails });
+          team.members = updatedMembers;
+          team.memberEmails = updatedMemberEmails;
+          modal.classList.remove('active');
+          renderTeamMemberList(team);
+          if (typeof renderTeamList === 'function') renderTeamList();
+          if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
+          const assignedCard = document.getElementById('assigned-team-card-' + teamId);
+          if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+        } catch (error) {
+          alert('Gagal menyimpan perubahan: ' + error.message);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = origHtml;
+        }
+      });
 
       document.getElementById('addTeamMemberBtn')?.addEventListener('click', async () => {
         const teamId = document.getElementById('teamMembersModal').dataset.teamId;
