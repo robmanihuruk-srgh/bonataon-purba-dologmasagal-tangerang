@@ -455,6 +455,16 @@
     #mom-agenda-table .agenda-row-actions button:hover { background: rgba(0,0,0,0.05); color: var(--color-secondary); }
     #mom-agenda-table .agenda-row-actions button.agenda-del:hover { color: #dc2626; }
     #mom-agenda-empty td { text-align: center; color: var(--color-text-light); font-style: italic; padding: 20px; }
+    /* Editor Susunan Panitia */
+    #mom-committee-table td { padding: 8px 10px; vertical-align: middle; }
+    #mom-committee-table input.committee-inp { width: 100%; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-family: var(--font-body); font-size: 0.9rem; background: #fff; }
+    #mom-committee-table input.committee-inp:focus { outline: none; border-color: var(--color-primary); }
+    #mom-committee-table .committee-num { text-align: center; font-weight: 600; color: var(--color-secondary); }
+    #mom-committee-table .committee-actions { text-align: center; white-space: nowrap; }
+    #mom-committee-table .committee-actions button { background: none; border: none; cursor: pointer; color: var(--color-text-light); padding: 4px 6px; font-size: 0.95rem; border-radius: 4px; }
+    #mom-committee-table .committee-actions button:hover { background: rgba(0,0,0,0.05); color: var(--color-secondary); }
+    #mom-committee-table .committee-actions button.committee-del:hover { color: #dc2626; }
+    #mom-committee-empty td { text-align: center; color: var(--color-text-light); font-style: italic; padding: 20px; }
 
     @media print {
       .sidebar, .sidebar-hover-trigger, .panel-header, .btn-add-section, .section-actions, .task-actions, .add-task-btn, .filter-row, .modal, .btn-header, .btn-edit-meeting, .btn-delete-meeting, .theme-switcher, #fontSwitcher, .user-info, .log-card, .notification-wrapper, #install-pwa-container { display: none !important; }
@@ -571,8 +581,8 @@
     .team-detail-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--color-secondary); }
     .team-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
     .team-detail-header h3 { font-size: 1.2rem; font-weight: 700; color: var(--color-secondary); font-family: var(--font-heading); margin: 0; display: flex; align-items: center; gap: 10px; }
-    .team-members-grid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
-    .team-member-card { flex: 1 1 240px; min-width: 220px; max-width: 340px; background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; }
+    .team-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: stretch; gap: 12px; }
+    .team-member-card { background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; min-width: 0; }
     .team-member-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #ffffff; }
     .member-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--color-secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; flex-shrink: 0; }
     .member-info { flex: 1; min-width: 0; }
@@ -602,8 +612,8 @@
     .archived-badge { display: inline-block; background: #f0fdf4; color: #15803d; font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; margin-left: 8px; border: 1px solid #bbf7d0; }
 
     @media (max-width: 768px) {
-      .team-members-grid { flex-direction: column; }
-      .team-members-grid .team-member-card { flex: 1 1 auto; max-width: none; min-width: 0; }
+      .team-members-grid { grid-template-columns: 1fr; }
+      .team-members-grid .team-member-card { max-width: none; min-width: 0; }
       .team-actions-sidebar { opacity: 1; }
       .team-detail-card { padding: 16px; }
     }
@@ -927,6 +937,28 @@
           <textarea id="mom-attendees" rows="2" placeholder="Nama peserta, pisahkan dengan koma..."></textarea>
       </div>
 
+      <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 20px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">1b. Susunan Panitia</div>
+      <div id="mom-committee-editor">
+        <table class="mom-table" id="mom-committee-table" style="margin-top:0;">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">No</th>
+              <th style="width:190px;">Jabatan / Posisi</th>
+              <th>Nama</th>
+              <th style="width:160px;">Seksi / Bidang</th>
+              <th style="width:70px; text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="mom-committee-tbody"></tbody>
+        </table>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" id="momAddCommitteeBtn" style="padding:8px 14px;"><i class="fas fa-user-plus"></i> Tambah Panitia</button>
+          <button type="button" class="btn-secondary" id="momImportCommitteeBtn" style="padding:8px 14px;"><i class="fas fa-file-import"></i> Impor dari Tim</button>
+        </div>
+        <small style="color: var(--color-text-light); display:block; margin-top:8px;"><i class="fas fa-info-circle"></i> Susun nama-nama panitia beserta jabatannya. Gunakan "Impor dari Tim" untuk menarik anggota dari tim yang ditugaskan secara otomatis. Bagian ini akan ikut tercetak pada PDF MoM.</small>
+      </div>
+      <div id="mom-committee-readonly-note" style="display:none; color: var(--color-text-light); font-size:0.85rem; margin-top:8px;"><i class="fas fa-lock"></i> Hanya admin/pembuat rapat yang dapat mengubah susunan panitia.</div>
+
       <div style="background: rgba(184, 134, 11, 0.05); padding: 12px 16px; border-left: 4px solid var(--color-primary); margin-bottom: 20px; margin-top:32px; font-weight: 600; color: var(--color-secondary); border-radius: 0 8px 8px 0; font-family: var(--font-body);">2. Agenda Rapat</div>
 
       <div id="mom-agenda-editor">
@@ -1095,6 +1127,7 @@
           <button class="btn-primary" id="addTeamMemberBtn"><i class="fas fa-plus"></i> Tambah</button>
         </div>
         <small style="color: var(--color-text-light); display:block; margin-top:6px;"><i class="fas fa-info-circle"></i> Ketik nama Sie yang sama untuk mengelompokkan beberapa orang ke dalam satu Sie. Kosongkan bila anggota tidak masuk Sie tertentu.</small>
+        <small style="color: var(--color-text-light); display:block; margin-top:4px;"><i class="fas fa-grip-vertical"></i> Seret ikon titik-titik di kiri nama untuk mengubah urutan atau memindahkan anggota antar-Sie.</small>
       </div>
       <div class="member-list" id="teamMemberList" style="max-height: 300px;">
         <div class="team-empty-state"><i class="fas fa-users"></i>Belum ada anggota dalam tim ini.</div>
@@ -5634,6 +5667,165 @@
       })();
       MomAgenda.init();
 
+      // ========== MODUL EDITOR SUSUNAN PANITIA MoM ==========
+      // Struktur data: array item { jabatan: string, nama: string, seksi: string }
+      const MomCommittee = (function () {
+        let items = [];
+        let editable = true;
+        const tbody = () => document.getElementById('mom-committee-tbody');
+
+        function render() {
+          const body = tbody();
+          if (!body) return;
+          body.innerHTML = '';
+          if (items.length === 0) {
+            body.innerHTML = '<tr id="mom-committee-empty"><td colspan="5">Belum ada susunan panitia. Tekan "Tambah Panitia" atau "Impor dari Tim".</td></tr>';
+            return;
+          }
+          const dis = editable ? '' : 'disabled';
+          items.forEach((it, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+              '<td class="committee-num">' + (i + 1) + '</td>' +
+              '<td><input type="text" class="committee-inp committee-jabatan" data-i="' + i + '" value="' + escapeHtml(it.jabatan) + '" placeholder="mis. Ketua Panitia" ' + dis + '></td>' +
+              '<td><input type="text" class="committee-inp committee-nama" data-i="' + i + '" value="' + escapeHtml(it.nama) + '" placeholder="Nama lengkap" ' + dis + '></td>' +
+              '<td><input type="text" class="committee-inp committee-seksi" data-i="' + i + '" value="' + escapeHtml(it.seksi) + '" placeholder="Seksi (opsional)" ' + dis + '></td>' +
+              '<td class="committee-actions">' +
+                (editable ?
+                  '<button type="button" class="committee-up" data-i="' + i + '" title="Naik"><i class="fas fa-arrow-up"></i></button>' +
+                  '<button type="button" class="committee-down" data-i="' + i + '" title="Turun"><i class="fas fa-arrow-down"></i></button>' +
+                  '<button type="button" class="committee-del" data-i="' + i + '" title="Hapus"><i class="fas fa-trash"></i></button>'
+                  : '—') +
+              '</td>';
+            body.appendChild(tr);
+          });
+        }
+
+        function syncFromDom() {
+          const body = tbody();
+          if (!body) return;
+          body.querySelectorAll('input.committee-jabatan').forEach(inp => { const i = parseInt(inp.dataset.i, 10); if (items[i]) items[i].jabatan = inp.value; });
+          body.querySelectorAll('input.committee-nama').forEach(inp => { const i = parseInt(inp.dataset.i, 10); if (items[i]) items[i].nama = inp.value; });
+          body.querySelectorAll('input.committee-seksi').forEach(inp => { const i = parseInt(inp.dataset.i, 10); if (items[i]) items[i].seksi = inp.value; });
+        }
+
+        function addRow() {
+          if (!editable) return;
+          syncFromDom();
+          items.push({ jabatan: '', nama: '', seksi: '' });
+          render();
+          const inputs = tbody().querySelectorAll('input.committee-jabatan');
+          if (inputs.length) inputs[inputs.length - 1].focus();
+        }
+
+        // Impor anggota dari tim yang ditugaskan pada rapat ini.
+        // Koordinator -> jabatan "Koordinator", anggota -> "Anggota"; Sie -> kolom seksi.
+        function importFromTeams() {
+          if (!editable) return;
+          syncFromDom();
+          const meeting = meetings.find(m => m.id === currentMeetingId);
+          if (!meeting || !meeting.assignedTeamIds || meeting.assignedTeamIds.length === 0) {
+            alert('Belum ada tim yang ditugaskan pada rapat ini.');
+            return;
+          }
+          const imported = [];
+          meeting.assignedTeamIds.forEach(tid => {
+            const team = teams.find(t => t.id === tid);
+            if (!team || !team.members) return;
+            // Urutkan: per Sie, koordinator dulu
+            const sorted = [...team.members].sort((a, b) => {
+              const sa = (a.section || '').trim(), sb = (b.section || '').trim();
+              if (sa !== sb) { if (sa === '') return 1; if (sb === '') return -1; return sa.localeCompare(sb); }
+              if (a.role === 'koordinator' && b.role !== 'koordinator') return -1;
+              if (a.role !== 'koordinator' && b.role === 'koordinator') return 1;
+              return (a.name || '').localeCompare(b.name || '');
+            });
+            sorted.forEach(m => {
+              imported.push({
+                jabatan: m.role === 'koordinator' ? 'Koordinator' : 'Anggota',
+                nama: (m.name || '').trim(),
+                seksi: (m.section || '').trim()
+              });
+            });
+          });
+          if (imported.length === 0) {
+            alert('Tim yang ditugaskan belum memiliki anggota.');
+            return;
+          }
+          // Hindari duplikat terhadap yang sudah ada (berdasarkan nama+seksi).
+          const existingKeys = new Set(items.map(it => (it.nama || '').toLowerCase() + '||' + (it.seksi || '').toLowerCase()));
+          const toAdd = imported.filter(it => {
+            const k = (it.nama || '').toLowerCase() + '||' + (it.seksi || '').toLowerCase();
+            if (existingKeys.has(k)) return false;
+            existingKeys.add(k);
+            return true;
+          });
+          if (toAdd.length === 0) {
+            alert('Semua anggota tim sudah ada dalam susunan panitia.');
+            return;
+          }
+          // Buang baris kosong sebelum menambahkan hasil impor
+          items = items.filter(it => (it.jabatan || '').trim() || (it.nama || '').trim() || (it.seksi || '').trim());
+          items = items.concat(toAdd);
+          render();
+          alert(toAdd.length + ' anggota berhasil diimpor dari tim.');
+        }
+
+        function onBodyClick(e) {
+          const btn = e.target.closest('button');
+          if (!btn || !editable) return;
+          const i = parseInt(btn.dataset.i, 10);
+          if (isNaN(i)) return;
+          syncFromDom();
+          if (btn.classList.contains('committee-del')) {
+            items.splice(i, 1);
+          } else if (btn.classList.contains('committee-up')) {
+            if (i > 0) { const t = items[i]; items[i] = items[i - 1]; items[i - 1] = t; }
+          } else if (btn.classList.contains('committee-down')) {
+            if (i < items.length - 1) { const t = items[i]; items[i] = items[i + 1]; items[i + 1] = t; }
+          }
+          render();
+        }
+
+        return {
+          init() {
+            const addBtn = document.getElementById('momAddCommitteeBtn');
+            const impBtn = document.getElementById('momImportCommitteeBtn');
+            if (addBtn) addBtn.addEventListener('click', addRow);
+            if (impBtn) impBtn.addEventListener('click', importFromTeams);
+            const body = tbody();
+            if (body) body.addEventListener('click', onBodyClick);
+          },
+          load(data) {
+            items = Array.isArray(data)
+              ? data.map(d => ({
+                  jabatan: (d && d.jabatan) ? String(d.jabatan) : '',
+                  nama: (d && d.nama) ? String(d.nama) : '',
+                  seksi: (d && d.seksi) ? String(d.seksi) : ''
+                }))
+              : [];
+            render();
+          },
+          getData() {
+            syncFromDom();
+            return items
+              .filter(it => (it.jabatan && it.jabatan.trim()) || (it.nama && it.nama.trim()) || (it.seksi && it.seksi.trim()))
+              .map(it => ({ jabatan: (it.jabatan || '').trim(), nama: (it.nama || '').trim(), seksi: (it.seksi || '').trim() }));
+          },
+          setEditable(v) {
+            editable = !!v;
+            const addBtn = document.getElementById('momAddCommitteeBtn');
+            const impBtn = document.getElementById('momImportCommitteeBtn');
+            if (addBtn) addBtn.style.display = editable ? '' : 'none';
+            if (impBtn) impBtn.style.display = editable ? '' : 'none';
+            const note = document.getElementById('mom-committee-readonly-note');
+            if (note) note.style.display = editable ? 'none' : 'block';
+            render();
+          }
+        };
+      })();
+      MomCommittee.init();
+
       // ========== MODUL TANDA TANGAN DIGITAL MoM ==========
       const MomSignatureImage = (function () {
         let dataUrl = null;      // base64 gambar tanda tangan
@@ -5725,12 +5917,14 @@
               document.getElementById('mom-attendees').value = meeting.mom.attendees || '';
               document.getElementById('mom-discussion').value = meeting.mom.discussion || '';
               MomAgenda.load(meeting.mom.agenda);
+              MomCommittee.load(meeting.mom.committee);
               MomSignatureImage.load(meeting.mom.signatureImage, meeting.mom.notulisName);
           } else {
               document.getElementById('mom-location').value = '';
               document.getElementById('mom-attendees').value = '';
               document.getElementById('mom-discussion').value = '';
               MomAgenda.load(null);
+              MomCommittee.load(null);
               MomSignatureImage.load(null, '');
           }
 
@@ -5739,6 +5933,7 @@
           document.getElementById('mom-attendees').readOnly = !canEditMom;
           document.getElementById('mom-discussion').readOnly = !canEditMom;
           MomAgenda.setEditable(canEditMom);
+          MomCommittee.setEditable(canEditMom);
           MomSignatureImage.setEditable(canEditMom);
 
           if (canEditMom) {
@@ -5857,6 +6052,7 @@
               attendees: document.getElementById('mom-attendees').value,
               discussion: document.getElementById('mom-discussion').value,
               agenda: MomAgenda.getData(),
+              committee: MomCommittee.getData(),
               signatureImage: MomSignatureImage.getData() || null,
               notulisName: MomSignatureImage.getNotulisName() || ''
           };
@@ -5974,6 +6170,34 @@
             yPos += 15;
           }
           pdfResetFont(doc);
+
+          // === SUSUNAN PANITIA (opsional) ===
+          const committeeRows = (typeof MomCommittee !== 'undefined') ? MomCommittee.getData() : [];
+          if (committeeRows.length > 0) {
+            yPos = pdfEnsureSpace(yPos, 24);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("B1. SUSUNAN PANITIA", 14, yPos);
+            yPos += 5;
+            const committeeBody = committeeRows.map((r, i) => [
+              String(i + 1),
+              r.jabatan || '-',
+              r.nama || '-',
+              r.seksi || '-'
+            ]);
+            doc.autoTable({
+              startY: yPos,
+              head: [['No', 'Jabatan / Posisi', 'Nama', 'Seksi / Bidang']],
+              body: committeeBody,
+              theme: 'grid',
+              styles: { fontSize: 9, font: 'helvetica', valign: 'top' },
+              headStyles: { fillColor: [26, 43, 76], textColor: [255, 255, 255] },
+              alternateRowStyles: { fillColor: [248, 250, 252] },
+              columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 55, fontStyle: 'bold' }, 3: { cellWidth: 45 } }
+            });
+            yPos = doc.lastAutoTable.finalY + 12;
+            pdfResetFont(doc);
+          }
 
           // Sub-bagian: Poin Pembahasan / Hasil Rapat
           yPos = pdfEnsureSpace(yPos, 20);
@@ -6861,7 +7085,7 @@
       // Kelompokkan anggota tim berdasarkan Sie/Seksi.
       // Mengembalikan array [{ section: 'Nama Sie'|'', members: [...] }] terurut:
       // Sie ber-nama diurutkan alfabetis, grup "Tanpa Sie" diletakkan paling akhir.
-      function groupTeamMembersBySection(members) {
+      function groupTeamMembersBySection(members, preserveOrder = false) {
         const map = new Map();
         (members || []).forEach(m => {
           const key = (m.section || '').trim();
@@ -6869,19 +7093,35 @@
           map.get(key).push(m);
         });
         const groups = Array.from(map.entries()).map(([section, list]) => {
-          // Dalam satu Sie: koordinator dulu, lalu alfabetis nama
-          const sortedList = [...list].sort((a, b) => {
+          // preserveOrder = true  -> pertahankan urutan array apa adanya (untuk drag-and-drop manual)
+          // preserveOrder = false -> koordinator dulu, lalu alfabetis nama (perilaku lama)
+          const sortedList = preserveOrder ? [...list] : [...list].sort((a, b) => {
             if (a.role === 'koordinator' && b.role !== 'koordinator') return -1;
             if (a.role !== 'koordinator' && b.role === 'koordinator') return 1;
             return (a.name || '').localeCompare(b.name || '');
           });
           return { section, members: sortedList };
         });
-        groups.sort((a, b) => {
-          if (a.section === '' && b.section !== '') return 1;   // tanpa sie ke bawah
-          if (a.section !== '' && b.section === '') return -1;
-          return a.section.localeCompare(b.section);
-        });
+        if (preserveOrder) {
+          // Urutan Sie mengikuti kemunculan pertama pada array (agar drag antar-Sie stabil),
+          // namun grup "Tanpa Sie" tetap diletakkan paling akhir.
+          const firstIndex = new Map();
+          (members || []).forEach((m, i) => {
+            const k = (m.section || '').trim();
+            if (!firstIndex.has(k)) firstIndex.set(k, i);
+          });
+          groups.sort((a, b) => {
+            if (a.section === '' && b.section !== '') return 1;
+            if (a.section !== '' && b.section === '') return -1;
+            return (firstIndex.get(a.section) ?? 0) - (firstIndex.get(b.section) ?? 0);
+          });
+        } else {
+          groups.sort((a, b) => {
+            if (a.section === '' && b.section !== '') return 1;   // tanpa sie ke bawah
+            if (a.section !== '' && b.section === '') return -1;
+            return a.section.localeCompare(b.section);
+          });
+        }
         return groups;
       }
 
@@ -6905,12 +7145,14 @@
         }
 
         listDiv.innerHTML = '';
-        const groups = groupTeamMembersBySection(team.members);
+        const groups = groupTeamMembersBySection(team.members, true);
 
         groups.forEach(group => {
           // Header Sie
           const header = document.createElement('div');
           header.style.cssText = 'display:flex; align-items:center; gap:8px; margin:14px 0 6px; padding:6px 10px; background:var(--color-bg-light); border-radius:6px;';
+          header.className = 'sie-drop-header';
+          header.dataset.section = group.section || '';
           const koordCount = group.members.filter(m => m.role === 'koordinator').length;
           const sectionEsc = (group.section || '').replace(/'/g, "\\'");
           header.innerHTML = `
@@ -6927,7 +7169,10 @@
 
             const item = document.createElement('div');
             item.className = 'member-item';
-            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);';
+            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border); background:#fff;';
+            item.setAttribute('draggable', 'true');
+            item.dataset.memberKey = memberKey;
+            item.dataset.section = m.section || '';
 
             const roleClass = m.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
             const roleLabel = m.role === 'koordinator' ? 'Koordinator' : 'Anggota';
@@ -6935,6 +7180,7 @@
 
             item.innerHTML = `
               <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="drag-handle" title="Tahan & seret untuk memindahkan" style="cursor:grab; color:var(--color-text-light); padding:0 4px; font-size:0.95rem; touch-action:none;"><i class="fas fa-grip-vertical"></i></span>
                 <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(m.name || '?').charAt(0).toUpperCase()}</div>
                 <div>
                   <div style="font-weight: 600; color: var(--color-secondary);">${escapeHtml(m.name || 'Tanpa Nama')}</div>
@@ -6967,6 +7213,119 @@
             listDiv.appendChild(item);
           });
         });
+
+        // Aktifkan drag-and-drop pengurutan/pemindahan anggota.
+        setupTeamMemberDragAndDrop(team, listDiv);
+      }
+
+      // ===== DRAG & DROP: pindah urutan / antar-Sie anggota di modal Kelola Anggota =====
+      function setupTeamMemberDragAndDrop(team, listDiv) {
+        let dragKey = null;      // key anggota yang sedang diseret
+        let dragEl = null;
+
+        const clearIndicators = () => {
+          listDiv.querySelectorAll('.member-item').forEach(el => {
+            el.style.borderTop = '';
+            el.style.borderBottom = '1px solid var(--color-border)';
+          });
+          listDiv.querySelectorAll('.sie-drop-header').forEach(el => {
+            el.style.boxShadow = '';
+          });
+        };
+
+        listDiv.querySelectorAll('.member-item').forEach(item => {
+          item.addEventListener('dragstart', (e) => {
+            dragKey = item.dataset.memberKey;
+            dragEl = item;
+            item.style.opacity = '0.45';
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (_) {}
+          });
+          item.addEventListener('dragend', () => {
+            if (dragEl) dragEl.style.opacity = '';
+            dragKey = null; dragEl = null;
+            clearIndicators();
+          });
+          item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!dragKey || item.dataset.memberKey === dragKey) return;
+            const rect = item.getBoundingClientRect();
+            const before = (e.clientY - rect.top) < rect.height / 2;
+            clearIndicators();
+            if (before) item.style.borderTop = '2px solid var(--color-primary)';
+            else item.style.borderBottom = '2px solid var(--color-primary)';
+          });
+          item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!dragKey || item.dataset.memberKey === dragKey) return;
+            const rect = item.getBoundingClientRect();
+            const before = (e.clientY - rect.top) < rect.height / 2;
+            const targetSection = item.dataset.section || '';
+            reorderTeamMember(team, dragKey, item.dataset.memberKey, before, targetSection);
+          });
+        });
+
+        // Jatuhkan pada HEADER Sie -> pindahkan ke awal Sie tersebut.
+        listDiv.querySelectorAll('.sie-drop-header').forEach(header => {
+          header.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!dragKey) return;
+            clearIndicators();
+            header.style.boxShadow = 'inset 0 0 0 2px var(--color-primary)';
+          });
+          header.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!dragKey) return;
+            reorderTeamMember(team, dragKey, null, true, header.dataset.section || '');
+          });
+        });
+      }
+
+      // Susun ulang array team.members: pindahkan anggota `dragKey` ke posisi relatif
+      // terhadap `targetKey` (before/after), dan set section-nya = targetSection.
+      // targetKey null berarti drop pada header Sie -> letakkan di awal Sie tsb.
+      async function reorderTeamMember(team, dragKey, targetKey, before, targetSection) {
+        if (!team || !team.members) return;
+        const arr = [...team.members];
+        const fromIdx = arr.findIndex(m => ((m.email || '') + '||' + (m.name || '') + '||' + (m.section || '')) === dragKey);
+        if (fromIdx < 0) return;
+
+        const moved = { ...arr[fromIdx] };
+        const sectionChanged = (moved.section || '') !== (targetSection || '');
+        // Ambil elemen yang dipindah keluar dulu.
+        arr.splice(fromIdx, 1);
+        // Set section baru bila berpindah Sie.
+        moved.section = targetSection || '';
+
+        let insertAt;
+        if (targetKey) {
+          // Hitung ulang index target SETELAH penghapusan sumber.
+          const tIdx = arr.findIndex(m => ((m.email || '') + '||' + (m.name || '') + '||' + (m.section || '')) === targetKey);
+          if (tIdx < 0) { insertAt = arr.length; }
+          else { insertAt = before ? tIdx : tIdx + 1; }
+        } else {
+          // Drop pada header: sisipkan sebelum anggota pertama dengan section tsb (atau di akhir).
+          const firstInSection = arr.findIndex(m => (m.section || '') === (targetSection || ''));
+          insertAt = firstInSection < 0 ? arr.length : firstInSection;
+        }
+
+        arr.splice(insertAt, 0, moved);
+
+        // Optimistic update lokal + render segera agar responsif.
+        team.members = arr;
+        team.memberEmails = Array.from(new Set(arr.map(x => (x.email || '').toLowerCase()).filter(Boolean)));
+        renderTeamMemberList(team);
+
+        try {
+          await db.collection('teams').doc(team.id).update({ members: arr, memberEmails: team.memberEmails });
+          if (typeof renderTeamList === 'function') renderTeamList();
+          if (typeof currentTeamId !== 'undefined' && currentTeamId === team.id && typeof renderTeamDetail === 'function') renderTeamDetail(team);
+          const assignedCard = document.getElementById('assigned-team-card-' + team.id);
+          if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+          if (sectionChanged && typeof addLog === 'function' && currentMeetingId) { /* opsional: tidak nge-log agar tidak berisik */ }
+        } catch (error) {
+          alert('Gagal menyimpan urutan: ' + error.message);
+        }
       }
 
       // Cari index anggota berdasarkan key stabil (email||name||section).
