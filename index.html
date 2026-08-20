@@ -2369,7 +2369,7 @@
             <h4 style="margin: 0; color: var(--color-secondary); font-family: var(--font-heading);"><i class="fas fa-user-friends" style="color: var(--color-primary); margin-right: 8px;"></i>${escapeHtml(team.name || 'Tim')}</h4>
             <span style="font-size: 0.75rem; background: var(--color-bg-light); padding: 2px 10px; border-radius: 12px; color: var(--color-text-light);">${team.members?.length || 0} anggota</span>
           </div>
-          <div class="sie-print-grid sie-masonry" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-rows: 8px; grid-auto-flow: row dense; align-items: start; gap: 14px;">`;
+          <div class="sie-print-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; gap: 14px;">`;
 
         if (team.members && team.members.length > 0) {
           const groups = groupTeamMembersBySection(team.members, true);
@@ -2416,29 +2416,13 @@
       // berikutnya mulai dari KIRI. Karena tinggi tiap Sie berbeda, kita pakai grid
       // auto-rows halus (8px) + memberi setiap blok Sie "grid-row-end: span N" sesuai
       // tingginya, sehingga Sie pendek tidak menyisakan celah besar (packing rapat).
-      function layoutSieMasonry(root) {
-        const scope = root && root.querySelectorAll ? root : document;
-        const grids = scope.querySelectorAll('.sie-masonry');
-        grids.forEach(grid => {
-          const style = getComputedStyle(grid);
-          const rowH = parseFloat(style.gridAutoRows) || 8;
-          const gap = parseFloat(style.rowGap) || 0;
-          const blocks = grid.querySelectorAll(':scope > .sie-print-block');
-          blocks.forEach(block => {
-            block.style.gridRowEnd = 'auto'; // reset dulu agar pengukuran akurat
-            const h = block.getBoundingClientRect().height;
-            const span = Math.max(1, Math.ceil((h + gap) / (rowH + gap)));
-            block.style.gridRowEnd = 'span ' + span;
-          });
-        });
-      }
+      // CATATAN: Mekanisme "masonry" dinonaktifkan. Susunan Sie kembali memakai
+      // CSS Grid sederhana (repeat(auto-fill, minmax(240px,1fr))) yang menampilkan
+      // setiap Sie sebagai kolom UTUH dan berjajar menyamping — tanpa bergantung pada JS.
+      // Fungsi-fungsi ini dibiarkan sebagai no-op agar semua pemanggil lama tetap aman.
+      function layoutSieMasonry(root) { /* no-op: layout ditangani murni oleh CSS Grid */ }
+      function scheduleSieMasonry(root) { /* no-op */ }
 
-      // Jalankan ulang masonry saat ukuran window berubah (jumlah kolom bisa berubah).
-      let _sieMasonryRaf = null;
-      window.addEventListener('resize', () => {
-        if (_sieMasonryRaf) cancelAnimationFrame(_sieMasonryRaf);
-        _sieMasonryRaf = requestAnimationFrame(() => layoutSieMasonry(document));
-      });
       window.editTeamMemberNameByKey = async (teamId, key) => {
         let team = teams.find(t => t.id === teamId);
         if (!team) {
@@ -2538,7 +2522,7 @@
           }
         }
         // Setelah semua kartu terisi, susun ulang tata letak masonry-nya.
-        requestAnimationFrame(() => layoutSieMasonry(document));
+        scheduleSieMasonry(document);
       }
 
       function renderLogs(meeting) {
@@ -3520,7 +3504,7 @@
         content.innerHTML = html;
 
         // Susun kartu Sie secara rapat (masonry): mengisi ke kanan lalu membungkus ke kiri-bawah.
-        requestAnimationFrame(() => layoutSieMasonry(content));
+        scheduleSieMasonry(content);
 
         // Isi kartu tim yang ditugaskan yang datanya belum termuat (ambil dari Firestore)
         enrichAssignedTeamCards(meeting);
@@ -10535,6 +10519,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <script>
 (function() {
     console.log("[Notula-X-Note] Modul Integrasi Ekosistem Aktif!");
+    console.log("%c[Notula-X-Note] VERSI: 2026-08-20b — Susunan Sie menyamping (CSS Grid murni, utuh) ✅","background:#166534;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;");
 
     // 1. API: Google Calendar Generator
     window.syncToGoogleCalendar = function(title, description) {
