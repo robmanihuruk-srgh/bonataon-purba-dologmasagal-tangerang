@@ -466,6 +466,25 @@
     #mom-committee-table .committee-actions button.committee-del:hover { color: #dc2626; }
     #mom-committee-empty td { text-align: center; color: var(--color-text-light); font-style: italic; padding: 20px; }
 
+    /* ===== SUSUNAN SIE (Tim yang Ditugaskan) — TAMPILAN LAYAR =====
+       Aturan dipasang sebagai CLASS dengan !important (bukan inline) agar:
+       (1) berlaku instan dari CSS sejak render pertama — tidak butuh resize/F12,
+       (2) tidak bisa ditimpa oleh engine/patch lain yang menyuntik style.
+       Setiap Sie tampil sebagai kolom UTUH dan berjajar MENYAMPING ke kanan,
+       membungkus rapi ke bawah bila tidak muat. */
+    .sie-print-grid {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+      align-items: start !important;
+      gap: 14px !important;
+    }
+    .sie-print-grid > .sie-print-block {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+      min-width: 0;
+    }
+
     @media print {
       .sidebar, .sidebar-hover-trigger, .panel-header, .btn-add-section, .section-actions, .task-actions, .add-task-btn, .filter-row, .modal, .btn-header, .btn-edit-meeting, .btn-delete-meeting, .theme-switcher, #fontSwitcher, .user-info, .log-card, .notification-wrapper, #install-pwa-container { display: none !important; }
       body, .main-panel, .content { background: white; overflow: visible; height: auto; margin-left: 0 !important;}
@@ -581,8 +600,8 @@
     .team-detail-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--color-secondary); }
     .team-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
     .team-detail-header h3 { font-size: 1.2rem; font-weight: 700; color: var(--color-secondary); font-family: var(--font-heading); margin: 0; display: flex; align-items: center; gap: 10px; }
-    .team-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: stretch; gap: 12px; }
-    .team-member-card { background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; min-width: 0; }
+    .team-members-grid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+    .team-member-card { flex: 1 1 240px; min-width: 220px; max-width: 340px; background: #f8fafc; border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; }
     .team-member-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #ffffff; }
     .member-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--color-secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; flex-shrink: 0; }
     .member-info { flex: 1; min-width: 0; }
@@ -612,8 +631,8 @@
     .archived-badge { display: inline-block; background: #f0fdf4; color: #15803d; font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; margin-left: 8px; border: 1px solid #bbf7d0; }
 
     @media (max-width: 768px) {
-      .team-members-grid { grid-template-columns: 1fr; }
-      .team-members-grid .team-member-card { max-width: none; min-width: 0; }
+      .team-members-grid { flex-direction: column; }
+      .team-members-grid .team-member-card { flex: 1 1 auto; max-width: none; min-width: 0; }
       .team-actions-sidebar { opacity: 1; }
       .team-detail-card { padding: 16px; }
     }
@@ -1127,7 +1146,6 @@
           <button class="btn-primary" id="addTeamMemberBtn"><i class="fas fa-plus"></i> Tambah</button>
         </div>
         <small style="color: var(--color-text-light); display:block; margin-top:6px;"><i class="fas fa-info-circle"></i> Ketik nama Sie yang sama untuk mengelompokkan beberapa orang ke dalam satu Sie. Kosongkan bila anggota tidak masuk Sie tertentu.</small>
-        <small style="color: var(--color-text-light); display:block; margin-top:4px;"><i class="fas fa-grip-vertical"></i> Seret ikon titik-titik di kiri nama untuk mengubah urutan atau memindahkan anggota antar-Sie.</small>
       </div>
       <div class="member-list" id="teamMemberList" style="max-height: 300px;">
         <div class="team-empty-state"><i class="fas fa-users"></i>Belum ada anggota dalam tim ini.</div>
@@ -2372,13 +2390,19 @@
           <div class="sie-print-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; gap: 14px;">`;
 
         if (team.members && team.members.length > 0) {
-          const groups = groupTeamMembersBySection(team.members, true);
+          const groups = groupTeamMembersBySection(team.members, team.sectionOrder || null);
           groups.forEach(group => {
             // Setiap Sie menjadi satu KOLOM seragam dalam grid; kolom membungkus rapi ke bawah bila penuh.
             // Class 'sie-print-block' dipakai agar saat DICETAK, satu Sie (koordinator + anggota) tidak terpotong antar halaman.
-            inner += `<div class="sie-print-block" style="display: flex; flex-direction: column; gap: 8px;">`;
+            const secEsc = (group.section || '');
+            const dragAttr = canEditNames ? ' draggable="true"' : '';
+            inner += `<div class="sie-print-block sie-drag-col" data-section="${escapeHtml(secEsc)}"${dragAttr} style="display: flex; flex-direction: column; gap: 8px;">`;
             // Header Sie di dalam kolom — dengan aksen kiri dan jumlah anggota per Sie
-            inner += `<div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--color-bg-light); border-left:3px solid var(--color-primary); border-radius:6px;">
+            const dragHandle = canEditNames
+              ? `<span class="sie-drag-handle" title="Tahan & seret untuk memindahkan urutan Sie" style="cursor:grab; color:var(--color-text-light); font-size:0.8rem; touch-action:none; flex-shrink:0;"><i class="fas fa-grip-vertical"></i></span>`
+              : '';
+            inner += `<div class="sie-col-header" style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--color-bg-light); border-left:3px solid var(--color-primary); border-radius:6px;">
+              ${dragHandle}
               <i class="fas fa-layer-group" style="color: var(--color-primary); font-size:0.8rem;"></i>
               <span style="font-weight:700; font-size:0.82rem; color:var(--color-secondary); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${group.section ? escapeHtml(group.section) : 'Tanpa Sie'}</span>
               <span style="font-size:0.68rem; font-weight:600; background:#fff; border:1px solid var(--color-border); color:var(--color-text-light); padding:1px 8px; border-radius:10px; flex-shrink:0;">${group.members.length}</span>
@@ -2411,18 +2435,101 @@
         return inner;
       }
 
-      // ===== MASONRY LAYOUT UNTUK KARTU SIE (Tim yang Ditugaskan) =====
-      // Kartu Sie mengisi ke KANAN dulu memenuhi lebar layar, lalu membungkus ke baris
-      // berikutnya mulai dari KIRI. Karena tinggi tiap Sie berbeda, kita pakai grid
-      // auto-rows halus (8px) + memberi setiap blok Sie "grid-row-end: span N" sesuai
-      // tingginya, sehingga Sie pendek tidak menyisakan celah besar (packing rapat).
-      // CATATAN: Mekanisme "masonry" dinonaktifkan. Susunan Sie kembali memakai
-      // CSS Grid sederhana (repeat(auto-fill, minmax(240px,1fr))) yang menampilkan
-      // setiap Sie sebagai kolom UTUH dan berjajar menyamping — tanpa bergantung pada JS.
-      // Fungsi-fungsi ini dibiarkan sebagai no-op agar semua pemanggil lama tetap aman.
-      function layoutSieMasonry(root) { /* no-op: layout ditangani murni oleh CSS Grid */ }
-      function scheduleSieMasonry(root) { /* no-op */ }
+      // ===== DRAG & DROP: memindahkan URUTAN KOTAK SIE pada kartu "Tim yang Ditugaskan" =====
+      // Pengguna dapat menyeret kotak Sie (mis. "Ketua") untuk ditaruh sebelum/sesudah Sie
+      // lain. Urutan disimpan ke Firestore pada field team.sectionOrder (array nama Sie),
+      // sehingga tetap konsisten setelah refresh. Tidak mengubah data anggota sama sekali.
+      function setupSieColumnDragAndDrop(cardEl, teamId) {
+        if (!cardEl) return;
+        const grid = cardEl.querySelector('.sie-print-grid');
+        if (!grid) return;
+        const cols = grid.querySelectorAll(':scope > .sie-drag-col[draggable="true"]');
+        if (!cols.length) return;
 
+        let dragSection = null;
+        let dragEl = null;
+
+        const clearIndicators = () => {
+          grid.querySelectorAll(':scope > .sie-drag-col').forEach(el => {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+          });
+        };
+
+        cols.forEach(col => {
+          col.addEventListener('dragstart', (e) => {
+            dragSection = col.dataset.section || '';
+            dragEl = col;
+            col.style.opacity = '0.45';
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragSection); } catch (_) {}
+          });
+          col.addEventListener('dragend', () => {
+            if (dragEl) dragEl.style.opacity = '';
+            dragSection = null; dragEl = null;
+            clearIndicators();
+          });
+          col.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (dragSection === null || col.dataset.section === dragSection) return;
+            clearIndicators();
+            col.style.outline = '2px dashed var(--color-primary)';
+            col.style.outlineOffset = '2px';
+          });
+          col.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dragSection === null || col.dataset.section === dragSection) return;
+            const targetSection = col.dataset.section || '';
+            // Tentukan sisi jatuh: kiri = sebelum target, kanan = sesudah target.
+            const rect = col.getBoundingClientRect();
+            const before = (e.clientX - rect.left) < rect.width / 2;
+            reorderSieSection(teamId, dragSection, targetSection, before);
+          });
+        });
+      }
+
+      // Susun ulang array urutan Sie & simpan ke Firestore (field sectionOrder).
+      async function reorderSieSection(teamId, dragSection, targetSection, before) {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || !team.members) return;
+
+        // Bangun urutan Sie saat ini (hormati sectionOrder bila ada, lalu tambahkan sisanya).
+        const groups = groupTeamMembersBySection(team.members, team.sectionOrder || null);
+        let order = groups.map(g => g.section).filter(s => s !== ''); // kecualikan "Tanpa Sie"
+
+        const from = order.indexOf(dragSection);
+        if (from < 0) return;
+        order.splice(from, 1); // keluarkan yang diseret
+
+        let target = order.indexOf(targetSection);
+        if (target < 0) {
+          order.push(dragSection); // fallback: taruh di akhir
+        } else {
+          const insertAt = before ? target : target + 1;
+          order.splice(insertAt, 0, dragSection);
+        }
+
+        // Optimistic update lokal + render segera.
+        team.sectionOrder = order;
+        try {
+          await db.collection('teams').doc(teamId).update({ sectionOrder: order });
+        } catch (error) {
+          alert('Gagal menyimpan urutan Sie: ' + error.message);
+        }
+        // Segarkan semua tampilan terkait.
+        const assignedCard = document.getElementById('assigned-team-card-' + teamId);
+        if (assignedCard && typeof renderTeamCardInner === 'function') {
+          const canEdit = assignedCard.querySelector('.sie-drag-handle') !== null;
+          assignedCard.innerHTML = renderTeamCardInner(team, true);
+          setupSieColumnDragAndDrop(assignedCard, teamId);
+        }
+        if (typeof renderTeamMemberList === 'function' && typeof currentTeamId !== 'undefined' && currentTeamId === teamId) {
+          try { renderTeamMemberList(team); } catch (e) {}
+        }
+        if (typeof renderTeamList === 'function') { try { renderTeamList(); } catch (e) {} }
+      }
+
+      // Edit nama anggota tim (berbasis key stabil email||name||section).
       window.editTeamMemberNameByKey = async (teamId, key) => {
         let team = teams.find(t => t.id === teamId);
         if (!team) {
@@ -2452,7 +2559,6 @@
           // Segarkan kartu tim yang ditugaskan di detail rapat (bila sedang terbuka).
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard) assignedCard.innerHTML = renderTeamCardInner(team, true);
-          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal mengubah nama: ' + error.message);
         }
@@ -2517,12 +2623,11 @@
           }
           if (team) {
             card.innerHTML = renderTeamCardInner(team, canEditTeamNames);
+            setupSieColumnDragAndDrop(card, teamId);
           } else {
             card.innerHTML = `<div style="color:#dc2626; font-size:0.85rem;"><i class="fas fa-exclamation-triangle"></i> Data tim tidak ditemukan (mungkin telah dihapus).</div>`;
           }
         }
-        // Setelah semua kartu terisi, susun ulang tata letak masonry-nya.
-        scheduleSieMasonry(document);
       }
 
       function renderLogs(meeting) {
@@ -3503,8 +3608,13 @@
 
         content.innerHTML = html;
 
-        // Susun kartu Sie secara rapat (masonry): mengisi ke kanan lalu membungkus ke kiri-bawah.
-        scheduleSieMasonry(content);
+        // Aktifkan drag-and-drop urutan kotak Sie pada tiap kartu tim yang ditugaskan.
+        if (meeting.assignedTeamIds) {
+          meeting.assignedTeamIds.forEach(tid => {
+            const card = document.getElementById('assigned-team-card-' + tid);
+            if (card) setupSieColumnDragAndDrop(card, tid);
+          });
+        }
 
         // Isi kartu tim yang ditugaskan yang datanya belum termuat (ambil dari Firestore)
         enrichAssignedTeamCards(meeting);
@@ -7102,7 +7212,7 @@
       // Kelompokkan anggota tim berdasarkan Sie/Seksi.
       // Mengembalikan array [{ section: 'Nama Sie'|'', members: [...] }] terurut:
       // Sie ber-nama diurutkan alfabetis, grup "Tanpa Sie" diletakkan paling akhir.
-      function groupTeamMembersBySection(members, preserveOrder = false) {
+      function groupTeamMembersBySection(members, sectionOrder = null) {
         const map = new Map();
         (members || []).forEach(m => {
           const key = (m.section || '').trim();
@@ -7110,27 +7220,27 @@
           map.get(key).push(m);
         });
         const groups = Array.from(map.entries()).map(([section, list]) => {
-          // preserveOrder = true  -> pertahankan urutan array apa adanya (untuk drag-and-drop manual)
-          // preserveOrder = false -> koordinator dulu, lalu alfabetis nama (perilaku lama)
-          const sortedList = preserveOrder ? [...list] : [...list].sort((a, b) => {
+          // Dalam satu Sie: koordinator dulu, lalu alfabetis nama
+          const sortedList = [...list].sort((a, b) => {
             if (a.role === 'koordinator' && b.role !== 'koordinator') return -1;
             if (a.role !== 'koordinator' && b.role === 'koordinator') return 1;
             return (a.name || '').localeCompare(b.name || '');
           });
           return { section, members: sortedList };
         });
-        if (preserveOrder) {
-          // Urutan Sie mengikuti kemunculan pertama pada array (agar drag antar-Sie stabil),
-          // namun grup "Tanpa Sie" tetap diletakkan paling akhir.
-          const firstIndex = new Map();
-          (members || []).forEach((m, i) => {
-            const k = (m.section || '').trim();
-            if (!firstIndex.has(k)) firstIndex.set(k, i);
-          });
+        // Jika ada urutan Sie kustom (hasil drag-and-drop yang disimpan), hormati urutan itu.
+        // Sie yang ada di sectionOrder tampil sesuai indeksnya; Sie yang tidak tercantum
+        // (mis. baru dibuat) ditaruh setelahnya secara alfabetis. "Tanpa Sie" selalu terakhir.
+        if (Array.isArray(sectionOrder) && sectionOrder.length > 0) {
+          const orderIndex = new Map();
+          sectionOrder.forEach((s, i) => orderIndex.set((s || '').trim(), i));
           groups.sort((a, b) => {
             if (a.section === '' && b.section !== '') return 1;
             if (a.section !== '' && b.section === '') return -1;
-            return (firstIndex.get(a.section) ?? 0) - (firstIndex.get(b.section) ?? 0);
+            const ai = orderIndex.has(a.section) ? orderIndex.get(a.section) : Infinity;
+            const bi = orderIndex.has(b.section) ? orderIndex.get(b.section) : Infinity;
+            if (ai !== bi) return ai - bi;
+            return a.section.localeCompare(b.section);
           });
         } else {
           groups.sort((a, b) => {
@@ -7162,14 +7272,12 @@
         }
 
         listDiv.innerHTML = '';
-        const groups = groupTeamMembersBySection(team.members, true);
+        const groups = groupTeamMembersBySection(team.members, team.sectionOrder || null);
 
         groups.forEach(group => {
           // Header Sie
           const header = document.createElement('div');
           header.style.cssText = 'display:flex; align-items:center; gap:8px; margin:14px 0 6px; padding:6px 10px; background:var(--color-bg-light); border-radius:6px;';
-          header.className = 'sie-drop-header';
-          header.dataset.section = group.section || '';
           const koordCount = group.members.filter(m => m.role === 'koordinator').length;
           const sectionEsc = (group.section || '').replace(/'/g, "\\'");
           header.innerHTML = `
@@ -7186,10 +7294,7 @@
 
             const item = document.createElement('div');
             item.className = 'member-item';
-            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border); background:#fff;';
-            item.setAttribute('draggable', 'true');
-            item.dataset.memberKey = memberKey;
-            item.dataset.section = m.section || '';
+            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);';
 
             const roleClass = m.role === 'koordinator' ? 'role-koordinator' : 'role-anggota';
             const roleLabel = m.role === 'koordinator' ? 'Koordinator' : 'Anggota';
@@ -7197,7 +7302,6 @@
 
             item.innerHTML = `
               <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="drag-handle" title="Tahan & seret untuk memindahkan" style="cursor:grab; color:var(--color-text-light); padding:0 4px; font-size:0.95rem; touch-action:none;"><i class="fas fa-grip-vertical"></i></span>
                 <div class="member-avatar" style="width: 32px; height: 32px; font-size: 0.85rem;">${(m.name || '?').charAt(0).toUpperCase()}</div>
                 <div>
                   <div style="font-weight: 600; color: var(--color-secondary);">${escapeHtml(m.name || 'Tanpa Nama')}</div>
@@ -7230,120 +7334,6 @@
             listDiv.appendChild(item);
           });
         });
-
-        // Aktifkan drag-and-drop pengurutan/pemindahan anggota.
-        setupTeamMemberDragAndDrop(team, listDiv);
-      }
-
-      // ===== DRAG & DROP: pindah urutan / antar-Sie anggota di modal Kelola Anggota =====
-      function setupTeamMemberDragAndDrop(team, listDiv) {
-        let dragKey = null;      // key anggota yang sedang diseret
-        let dragEl = null;
-
-        const clearIndicators = () => {
-          listDiv.querySelectorAll('.member-item').forEach(el => {
-            el.style.borderTop = '';
-            el.style.borderBottom = '1px solid var(--color-border)';
-          });
-          listDiv.querySelectorAll('.sie-drop-header').forEach(el => {
-            el.style.boxShadow = '';
-          });
-        };
-
-        listDiv.querySelectorAll('.member-item').forEach(item => {
-          item.addEventListener('dragstart', (e) => {
-            dragKey = item.dataset.memberKey;
-            dragEl = item;
-            item.style.opacity = '0.45';
-            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (_) {}
-          });
-          item.addEventListener('dragend', () => {
-            if (dragEl) dragEl.style.opacity = '';
-            dragKey = null; dragEl = null;
-            clearIndicators();
-          });
-          item.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!dragKey || item.dataset.memberKey === dragKey) return;
-            const rect = item.getBoundingClientRect();
-            const before = (e.clientY - rect.top) < rect.height / 2;
-            clearIndicators();
-            if (before) item.style.borderTop = '2px solid var(--color-primary)';
-            else item.style.borderBottom = '2px solid var(--color-primary)';
-          });
-          item.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!dragKey || item.dataset.memberKey === dragKey) return;
-            const rect = item.getBoundingClientRect();
-            const before = (e.clientY - rect.top) < rect.height / 2;
-            const targetSection = item.dataset.section || '';
-            reorderTeamMember(team, dragKey, item.dataset.memberKey, before, targetSection);
-          });
-        });
-
-        // Jatuhkan pada HEADER Sie -> pindahkan ke awal Sie tersebut.
-        listDiv.querySelectorAll('.sie-drop-header').forEach(header => {
-          header.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!dragKey) return;
-            clearIndicators();
-            header.style.boxShadow = 'inset 0 0 0 2px var(--color-primary)';
-          });
-          header.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (!dragKey) return;
-            reorderTeamMember(team, dragKey, null, true, header.dataset.section || '');
-          });
-        });
-      }
-
-      // Susun ulang array team.members: pindahkan anggota `dragKey` ke posisi relatif
-      // terhadap `targetKey` (before/after), dan set section-nya = targetSection.
-      // targetKey null berarti drop pada header Sie -> letakkan di awal Sie tsb.
-      async function reorderTeamMember(team, dragKey, targetKey, before, targetSection) {
-        if (!team || !team.members) return;
-        const arr = [...team.members];
-        const fromIdx = arr.findIndex(m => ((m.email || '') + '||' + (m.name || '') + '||' + (m.section || '')) === dragKey);
-        if (fromIdx < 0) return;
-
-        const moved = { ...arr[fromIdx] };
-        const sectionChanged = (moved.section || '') !== (targetSection || '');
-        // Ambil elemen yang dipindah keluar dulu.
-        arr.splice(fromIdx, 1);
-        // Set section baru bila berpindah Sie.
-        moved.section = targetSection || '';
-
-        let insertAt;
-        if (targetKey) {
-          // Hitung ulang index target SETELAH penghapusan sumber.
-          const tIdx = arr.findIndex(m => ((m.email || '') + '||' + (m.name || '') + '||' + (m.section || '')) === targetKey);
-          if (tIdx < 0) { insertAt = arr.length; }
-          else { insertAt = before ? tIdx : tIdx + 1; }
-        } else {
-          // Drop pada header: sisipkan sebelum anggota pertama dengan section tsb (atau di akhir).
-          const firstInSection = arr.findIndex(m => (m.section || '') === (targetSection || ''));
-          insertAt = firstInSection < 0 ? arr.length : firstInSection;
-        }
-
-        arr.splice(insertAt, 0, moved);
-
-        // Optimistic update lokal + render segera agar responsif.
-        team.members = arr;
-        team.memberEmails = Array.from(new Set(arr.map(x => (x.email || '').toLowerCase()).filter(Boolean)));
-        renderTeamMemberList(team);
-
-        try {
-          await db.collection('teams').doc(team.id).update({ members: arr, memberEmails: team.memberEmails });
-          if (typeof renderTeamList === 'function') renderTeamList();
-          if (typeof currentTeamId !== 'undefined' && currentTeamId === team.id && typeof renderTeamDetail === 'function') renderTeamDetail(team);
-          const assignedCard = document.getElementById('assigned-team-card-' + team.id);
-          if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
-          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
-          if (sectionChanged && typeof addLog === 'function' && currentMeetingId) { /* opsional: tidak nge-log agar tidak berisik */ }
-        } catch (error) {
-          alert('Gagal menyimpan urutan: ' + error.message);
-        }
       }
 
       // Cari index anggota berdasarkan key stabil (email||name||section).
@@ -7465,7 +7455,6 @@
           if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
-          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal mengubah nama Sie: ' + error.message);
         }
@@ -7561,7 +7550,6 @@
           if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
-          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal menyimpan perubahan: ' + error.message);
         } finally {
@@ -9088,6 +9076,19 @@
   async function updateTeamDisplayUI() {
     if (typeof currentMeetingId === 'undefined' || !currentMeetingId) return;
 
+    // GUARD UTAMA: Bila kartu "Tim yang Ditugaskan" (renderAssignedTeams) sudah ada di
+    // DOM, engine lama ini TIDAK BOLEH ikut campur sama sekali — mencegah tampilan
+    // menyamping tertimpa/kembali ke susunan lama. Berlaku instan tanpa perlu resize.
+    if (document.querySelector('.assigned-team-block') || document.querySelector('.sie-print-grid')) {
+      const stale = document.getElementById('notula-x-injected-team-list');
+      if (stale) stale.remove();
+      document.querySelectorAll('[data-notula-hidden-by-v5="1"]').forEach(el => {
+        el.style.display = '';
+        el.removeAttribute('data-notula-hidden-by-v5');
+      });
+      return;
+    }
+
     try {
       // 1. Ambil Data Rapat & Workspace dari Firestore
       const meetingDoc = await db.collection('meetings').doc(currentMeetingId).get();
@@ -10519,7 +10520,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <script>
 (function() {
     console.log("[Notula-X-Note] Modul Integrasi Ekosistem Aktif!");
-    console.log("%c[Notula-X-Note] VERSI: 2026-08-20b — Susunan Sie menyamping (CSS Grid murni, utuh) ✅","background:#166534;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;");
+    console.log("%c[Notula-X-Note] VERSI: 2026-08-20e — Sie menyamping + drag-urutan kotak Sie ✅","background:#166534;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;");
 
     // 1. API: Google Calendar Generator
     window.syncToGoogleCalendar = function(title, description) {
