@@ -2369,10 +2369,10 @@
             <h4 style="margin: 0; color: var(--color-secondary); font-family: var(--font-heading);"><i class="fas fa-user-friends" style="color: var(--color-primary); margin-right: 8px;"></i>${escapeHtml(team.name || 'Tim')}</h4>
             <span style="font-size: 0.75rem; background: var(--color-bg-light); padding: 2px 10px; border-radius: 12px; color: var(--color-text-light);">${team.members?.length || 0} anggota</span>
           </div>
-          <div class="sie-print-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; gap: 14px;">`;
+          <div class="sie-print-grid sie-masonry" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-rows: 8px; grid-auto-flow: row dense; align-items: start; gap: 14px;">`;
 
         if (team.members && team.members.length > 0) {
-          const groups = groupTeamMembersBySection(team.members);
+          const groups = groupTeamMembersBySection(team.members, true);
           groups.forEach(group => {
             // Setiap Sie menjadi satu KOLOM seragam dalam grid; kolom membungkus rapi ke bawah bila penuh.
             // Class 'sie-print-block' dipakai agar saat DICETAK, satu Sie (koordinator + anggota) tidak terpotong antar halaman.
@@ -2411,7 +2411,34 @@
         return inner;
       }
 
-      // Edit nama anggota tim (berbasis key stabil email||name||section).
+      // ===== MASONRY LAYOUT UNTUK KARTU SIE (Tim yang Ditugaskan) =====
+      // Kartu Sie mengisi ke KANAN dulu memenuhi lebar layar, lalu membungkus ke baris
+      // berikutnya mulai dari KIRI. Karena tinggi tiap Sie berbeda, kita pakai grid
+      // auto-rows halus (8px) + memberi setiap blok Sie "grid-row-end: span N" sesuai
+      // tingginya, sehingga Sie pendek tidak menyisakan celah besar (packing rapat).
+      function layoutSieMasonry(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        const grids = scope.querySelectorAll('.sie-masonry');
+        grids.forEach(grid => {
+          const style = getComputedStyle(grid);
+          const rowH = parseFloat(style.gridAutoRows) || 8;
+          const gap = parseFloat(style.rowGap) || 0;
+          const blocks = grid.querySelectorAll(':scope > .sie-print-block');
+          blocks.forEach(block => {
+            block.style.gridRowEnd = 'auto'; // reset dulu agar pengukuran akurat
+            const h = block.getBoundingClientRect().height;
+            const span = Math.max(1, Math.ceil((h + gap) / (rowH + gap)));
+            block.style.gridRowEnd = 'span ' + span;
+          });
+        });
+      }
+
+      // Jalankan ulang masonry saat ukuran window berubah (jumlah kolom bisa berubah).
+      let _sieMasonryRaf = null;
+      window.addEventListener('resize', () => {
+        if (_sieMasonryRaf) cancelAnimationFrame(_sieMasonryRaf);
+        _sieMasonryRaf = requestAnimationFrame(() => layoutSieMasonry(document));
+      });
       window.editTeamMemberNameByKey = async (teamId, key) => {
         let team = teams.find(t => t.id === teamId);
         if (!team) {
@@ -2441,6 +2468,7 @@
           // Segarkan kartu tim yang ditugaskan di detail rapat (bila sedang terbuka).
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard) assignedCard.innerHTML = renderTeamCardInner(team, true);
+          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal mengubah nama: ' + error.message);
         }
@@ -2509,6 +2537,8 @@
             card.innerHTML = `<div style="color:#dc2626; font-size:0.85rem;"><i class="fas fa-exclamation-triangle"></i> Data tim tidak ditemukan (mungkin telah dihapus).</div>`;
           }
         }
+        // Setelah semua kartu terisi, susun ulang tata letak masonry-nya.
+        requestAnimationFrame(() => layoutSieMasonry(document));
       }
 
       function renderLogs(meeting) {
@@ -3488,6 +3518,9 @@
         }
 
         content.innerHTML = html;
+
+        // Susun kartu Sie secara rapat (masonry): mengisi ke kanan lalu membungkus ke kiri-bawah.
+        requestAnimationFrame(() => layoutSieMasonry(content));
 
         // Isi kartu tim yang ditugaskan yang datanya belum termuat (ambil dari Firestore)
         enrichAssignedTeamCards(meeting);
@@ -7322,6 +7355,7 @@
           if (typeof currentTeamId !== 'undefined' && currentTeamId === team.id && typeof renderTeamDetail === 'function') renderTeamDetail(team);
           const assignedCard = document.getElementById('assigned-team-card-' + team.id);
           if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
           if (sectionChanged && typeof addLog === 'function' && currentMeetingId) { /* opsional: tidak nge-log agar tidak berisik */ }
         } catch (error) {
           alert('Gagal menyimpan urutan: ' + error.message);
@@ -7447,6 +7481,7 @@
           if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal mengubah nama Sie: ' + error.message);
         }
@@ -7542,6 +7577,7 @@
           if (currentTeamId === teamId && typeof renderTeamDetail === 'function') renderTeamDetail(team);
           const assignedCard = document.getElementById('assigned-team-card-' + teamId);
           if (assignedCard && typeof renderTeamCardInner === 'function') assignedCard.innerHTML = renderTeamCardInner(team, true);
+          if (assignedCard && typeof layoutSieMasonry === 'function') requestAnimationFrame(() => layoutSieMasonry(document));
         } catch (error) {
           alert('Gagal menyimpan perubahan: ' + error.message);
         } finally {
