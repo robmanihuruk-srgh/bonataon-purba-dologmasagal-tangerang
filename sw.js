@@ -1,6 +1,6 @@
 // Naikkan versi ini setiap kali app-shell (index.html/manifest/icon) diubah,
 // supaya browser tahu ada versi baru dan mengganti cache lama.
-const CACHE_NAME = 'notula-x-cache-v2';
+const CACHE_NAME = 'notula-x-cache-v3';
 
 // PENTING: path di bawah ini RELATIF ("./..."), bukan absolut ("/...").
 // Path absolut hanya benar kalau app di-hosting persis di root domain.
@@ -10,9 +10,9 @@ const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png'
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
 ];
 
 // Event Install: Menyimpan file penting ke cache browser.
