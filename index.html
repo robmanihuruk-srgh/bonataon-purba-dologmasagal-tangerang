@@ -8,11 +8,13 @@
   
   <meta name="theme-color" content="#1a2b4c">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Notula">
-  <link rel="apple-touch-icon" href="pic_ (2).jpg">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/jpeg" href="pic_ (2).jpg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
   
   <!-- MENGGUNAKAN MULTIPLE GOOGLE FONTS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -541,7 +543,16 @@
     #install-pwa-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none; }
     .btn-install-pwa { background-color: var(--color-primary); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 600; font-family: var(--font-body); box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; gap: 10px; transition: transform 0.3s ease, background-color 0.3s; }
     .btn-install-pwa:hover { transform: translateY(-2px); background-color: var(--color-primary-dark); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+    /* beforeinstallprompt tidak pernah tersedia di iOS/iPadOS Safari, jadi
+       tombol instal otomatis kita sembunyikan di sana dan diganti dengan
+       instruksi manual (#ios-install-hint) lewat JS. */
     @supports (-webkit-touch-callout: none) { #install-pwa-container { display: none !important; } }
+
+    #ios-install-hint { position: fixed; left: 16px; right: 16px; bottom: 20px; z-index: 9999; display: none; background: var(--color-secondary); color: #fff; border-radius: 14px; padding: 14px 42px 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); font-family: var(--font-body); font-size: 0.9rem; line-height: 1.45; }
+    #ios-install-hint strong { color: var(--color-primary); }
+    #ios-install-hint .ios-hint-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #fff; opacity: 0.7; font-size: 1.2rem; line-height: 1; cursor: pointer; padding: 4px; }
+    #ios-install-hint .ios-hint-close:hover { opacity: 1; }
+    @media (min-width: 480px) { #ios-install-hint { left: auto; width: 340px; } }
 
     /* ==== INCOME / PEMASUKAN STYLES ==== */
     .income-card { background: #ffffff; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid var(--color-border); box-shadow: 0 4px 20px rgba(0,0,0,0.03); position: relative; overflow: hidden; }
@@ -640,11 +651,18 @@
   </style>
 </head>
 <body>
-  <!-- PWA INSTALL BUTTON -->
+  <!-- PWA INSTALL BUTTON (Android / Desktop Chrome & Edge, via beforeinstallprompt) -->
   <div id="install-pwa-container">
     <button id="btnInstallPWA" class="btn-install-pwa">
       <i class="fas fa-download"></i> Install Notula App
     </button>
+  </div>
+
+  <!-- PWA INSTALL HINT untuk iOS/Safari (tidak mendukung beforeinstallprompt,
+       jadi instal harus manual lewat menu Share) -->
+  <div id="ios-install-hint">
+    <button type="button" id="btnCloseIosHint" class="ios-hint-close" aria-label="Tutup">&times;</button>
+    <span id="iosInstallHintText"></span>
   </div>
 
   <div id="loginOverlay">
@@ -7840,6 +7858,42 @@
         alert('Terima kasih! Notula kini tersedia di perangkat Anda.');
       });
 
+      // ---- Fallback instal manual untuk browser yang TIDAK mendukung
+      // event "beforeinstallprompt" (Safari di iPhone/iPad, dan Safari
+      // di Mac). Browser-browser ini tidak akan pernah memicu event di
+      // atas, jadi satu-satunya cara instal adalah lewat menu bawaan
+      // Safari sendiri — kita cuma tampilkan caranya.
+      (function initManualInstallHint() {
+        const hint = document.getElementById('ios-install-hint');
+        const hintText = document.getElementById('iosInstallHintText');
+        const btnClose = document.getElementById('btnCloseIosHint');
+        if (!hint || !hintText) return;
+
+        const ua = window.navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+        const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
+        const isMac = /Macintosh/.test(ua) && !isIOS;
+        const dismissKey = 'notula_install_hint_dismissed';
+
+        if (isStandalone || localStorage.getItem(dismissKey) === '1') return;
+
+        if (isIOS && isSafari) {
+          hintText.innerHTML = 'Untuk install Notula di iPhone/iPad: ketuk tombol <strong>Share</strong> <i class="fas fa-share-square"></i> di Safari, lalu pilih <strong>"Add to Home Screen"</strong>.';
+        } else if (isMac && isSafari) {
+          hintText.innerHTML = 'Untuk install Notula di Mac: buka menu <strong>File</strong> di Safari, lalu pilih <strong>"Add to Dock"</strong> (Safari 17+). Atau gunakan Chrome/Edge untuk instalasi otomatis.';
+        } else {
+          return; // browser lain (mis. Firefox) tidak perlu ditampilkan hint ini
+        }
+
+        hint.style.display = 'block';
+        if (btnClose) {
+          btnClose.addEventListener('click', () => {
+            hint.style.display = 'none';
+            try { localStorage.setItem(dismissKey, '1'); } catch (e) {}
+          });
+        }
+      })();
+
     })();
   </script>
 
@@ -9249,52 +9303,6 @@
 
   window.addEventListener('meetingLoaded', updateTeamDisplayUI);
 })();
-</script>
-<script>
-  let deferredPrompt;
-  const installContainer = document.getElementById('install-pwa-container');
-  const btnInstallPWA = document.getElementById('btnInstallPWA');
-
-  // 1. Daftarkan Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('SW Aktif'))
-        .catch(err => console.error('SW Gagal', err));
-    });
-  }
-
-  // 2. Tangkap event "Aplikasi Bisa Diinstal"
-  window.addEventListener('beforeinstallprompt', (e) => {
-    // Mencegah browser memunculkan bar instalasi bawaan yang kecil
-    e.preventDefault();
-    // Simpan event agar bisa dipicu nanti
-    deferredPrompt = e;
-    // Tampilkan tombol buatan kita
-    installContainer.style.display = 'block';
-  });
-
-  // 3. Logika saat tombol diklik
-  btnInstallPWA.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      // Munculkan prompt instalasi bawaan browser
-      deferredPrompt.prompt();
-      // Tunggu jawaban user (Accepted atau Dismissed)
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User response: ${outcome}`);
-      // Hapus prompt karena hanya bisa dipakai sekali
-      deferredPrompt = null;
-      // Sembunyikan tombol kita kembali
-      installContainer.style.display = 'none';
-    }
-  });
-
-  // 4. Sembunyikan tombol jika sudah terinstal
-  window.addEventListener('appinstalled', () => {
-    installContainer.style.display = 'none';
-    deferredPrompt = null;
-    alert('Terima kasih! Notula kini tersedia di layar utama Anda.');
-  });
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
