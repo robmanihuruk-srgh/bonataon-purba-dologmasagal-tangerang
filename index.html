@@ -2266,6 +2266,23 @@
         );
       }
 
+      // Cek apakah user adalah koordinator di SALAH SATU seksi pada rapat ini
+      function isKoordinatorOfAnyMeetingSection(meeting) {
+        if (!meeting || !meeting.sections) return false;
+        return meeting.sections.some(section => isKoordinatorOfSection(section));
+      }
+
+      // canUserEditMeeting: boleh Edit Rapat (tombol "Edit" di header rapat:
+      // judul, tanggal, info, agenda, workspace, tim yang ditugaskan)
+      // = admin, pembuat rapat (owner), ATAU koordinator seksi manapun di rapat ini
+      // (Menghapus rapat tetap terbatas admin/pembuat rapat saja, lihat deleteMeeting())
+      function canUserEditMeeting(meeting) {
+        if (!meeting) return false;
+        if (userRole === 'admin') return true;
+        if (meeting.createdBy === currentUser?.uid) return true;
+        return isKoordinatorOfAnyMeetingSection(meeting);
+      }
+
       // canUserEditSection: boleh edit NAMA/SETTING SEKSI (tombol "Edit Seksi")
       // = admin, pembuat rapat (owner), atau koordinator seksi ini
       // Jika seksi tidak ada access control -> semua bisa edit
@@ -2290,11 +2307,15 @@
         return isKoordinatorOfSection(section) || isMemberOfSection(section);
       }
 
-      // canUserCommentSection: boleh komentar (semua anggota tim yang terlibat di rapat)
-      function canUserCommentSection(meeting) {
+      // canUserCommentSection: boleh komentar
+      // = admin, pembuat rapat (owner), koordinator seksi, anggota seksi,
+      //   ATAU anggota tim yang ditugaskan ke rapat ini
+      function canUserCommentSection(meeting, section) {
         if (!meeting) return false;
         if (userRole === 'admin') return true;
         if (meeting.createdBy === currentUser?.uid) return true;
+        if (section && (isKoordinatorOfSection(section) || isMemberOfSection(section))) return true;
+        if (section && !sectionHasAccessControl(section)) return true;
         if (meeting.assignedTeamIds && meeting.assignedTeamIds.length > 0) {
           return meeting.assignedTeamIds.some(teamId => {
             const team = teams.find(t => t.id === teamId);
@@ -3872,7 +3893,7 @@
         const canEditSec = canUserEditSection(meeting, section);  // bisa edit nama/setting seksi
         const canEditTask = canUserEditTask(meeting, section);    // bisa tambah/edit/hapus tugas
         const canDeleteSec = userRole === 'admin' || meeting.createdBy === currentUser?.uid;
-        const canComment = canUserCommentSection(meeting);
+        const canComment = canUserCommentSection(meeting, section);
         // isReadOnly: user tidak bisa melakukan apa-apa di seksi ini (bahkan tugas)
         const isReadOnly = !canEditTask;
 
@@ -4573,7 +4594,7 @@
         if (!currentMeetingId) return;
         const m = meetings.find(m => m.id === currentMeetingId);
         if (!m) return;
-        if (userRole !== 'admin' && m.createdBy !== currentUser.uid) return alert('Akses ditolak');
+        if (!canUserEditMeeting(m)) return alert('Akses ditolak');
 
         document.getElementById('modalMeetingTitle').innerText = 'Edit Rapat';
         document.getElementById('meetingNameInput').value = m.title;
@@ -4646,7 +4667,7 @@
         const editId = document.getElementById('saveMeetingModal').dataset.editId;
         if (editId) {
           const existing = meetings.find(m => m.id === editId);
-          if (existing && userRole !== 'admin' && existing.createdBy !== currentUser.uid) {
+          if (existing && !canUserEditMeeting(existing)) {
              return alert('Akses ditolak');
           }
         }
@@ -5073,16 +5094,20 @@
             newWorkspaceBtn.classList.toggle('disabled', !currentUser);
         }
 
-        const canEditMeeting = isAdmin || isCreator;
-        const meetingBtns = [
-          document.getElementById('editMeetingBtn'),
-          document.getElementById('deleteMeetingBtn')
-        ].filter(Boolean);
+        const canEditMeeting = meeting ? canUserEditMeeting(meeting) : (isAdmin || isCreator);
+        const editMeetingBtnEl = document.getElementById('editMeetingBtn');
+        if (editMeetingBtnEl) {
+          editMeetingBtnEl.disabled = !canEditMeeting;
+          editMeetingBtnEl.classList.toggle('disabled', !canEditMeeting);
+        }
 
-        meetingBtns.forEach(btn => {
-          btn.disabled = !canEditMeeting;
-          btn.classList.toggle('disabled', !canEditMeeting);
-        });
+        // Hapus rapat tetap terbatas untuk admin/pembuat rapat saja (lebih destruktif)
+        const canDeleteMeeting = isAdmin || isCreator;
+        const deleteMeetingBtnEl = document.getElementById('deleteMeetingBtn');
+        if (deleteMeetingBtnEl) {
+          deleteMeetingBtnEl.disabled = !canDeleteMeeting;
+          deleteMeetingBtnEl.classList.toggle('disabled', !canDeleteMeeting);
+        }
 
         const addSectionBtn = document.getElementById('addSectionBtn');
         if (addSectionBtn) {
